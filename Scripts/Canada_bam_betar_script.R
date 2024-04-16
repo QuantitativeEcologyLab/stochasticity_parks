@@ -7,10 +7,10 @@ library('tictoc')
 library('ggpubr')
 library('rgeoboundaries') # to obtain shapefiles of countries
 
-#import dataset, transform the data, and save as an rds
+#import dataset
 data <- readRDS('Canada/data_eco.rds')
-data.thin <- slice(data, seq(from = 1, to = 228587752, by = 5)) %>% #thin the data to a daily resolution of every 5 days ? 
-  mutate(NDVI_scaled = (NDVI + 1) / 2)
+data.thin <- slice(data, seq(from = 1, to = 228587752, by = 5)) %>% #thin the data to a resolution of every 5 days 
+  mutate(NDVI_scaled = (NDVI + 1) / 2) #scale ndvi for beta distribution
 
 canada <- geoboundaries("Canada")
 
@@ -41,14 +41,16 @@ ndvi_bam <-
     knots = list(doy = c(0.5, 366.5)),
     control = gam.control(nthreads = 1, trace = TRUE))
 
+#check results of model
 plot(ndvi_bam, select = 1, scheme = 3, n2 = 100, too.far = 0.02)
 
-saveRDS(ndvi_bam, file = 'Canada/models/ndvi_bam_25mb_feb1.rds')
+saveRDS(ndvi_bam, file = 'Canada/models/ndvi_bam_1GB_march5.rds')
+
+#create a loop to predict the new data from the model------------------------------
 
 DAYS <- unique(d$date)
 RES <- list()
 
-#create a loop to predict the new data from the model
 for(i in 1:length(DAYS)){
   newd <- filter(d, date == DAYS[i])
   
@@ -68,64 +70,8 @@ for(i in 1:length(DAYS)){
 
 RESULTS <- do.call(rbind, RES)
 
+#
 r <- mutate(RESULTS,
             dec_date = decimal_date(day),
             year = year(day),
             doy = yday(day))
-
-#plot this for each ecozone ? plot all together or separate?
-
-ggarrange(a, c, ncol = 2)
-
-a <- ggplot(r, aes(year, mu)) +
-  geom_smooth(color = 'darkgreen') +
-  theme_classic() +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.title.x = element_text(),
-        axis.title.y = element_text(),
-        axis.text.x = element_text("Year"),
-        axis.text.y = element_text("Mean"))
-
-c <- ggplot(r, aes(doy, mu)) +
-  geom_smooth(color = 'darkgreen') +
-  theme_classic() +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.title.x = element_text(),
-        axis.title.y = element_text(),
-        legend.key.size = unit(1.5, "cm"))
-
-#create predictions from the model-----------------
-#create a new data set for the predictions
-
-latlong <- d[,c(3, 8:10)]
-latlong <- distinct(latlong)
-
-latlong$year <- 2010
-latlong$doy <- 100
-latlong$park <- as.factor(FALSE)
-
-preds <- bind_cols(latlong,
-                   as.data.frame(predict(ndvi_bam, newdata = latlong, type = 'response')) %>%
-                     rename(mu = 'predict(ndvi_bam, newdata = latlong, type = "response")') %>% # mean parameters
-                     mutate(mu = mu * 2 - 1)) # rescale to [-1, 1])
-
-
-#plot the estimated mean and variance from the models onto a map 
-
-ggplot() +
-  geom_raster(data = preds, aes(long, lat, fill = mu)) +
-  geom_sf(data = canada, fill = NA, color = "black") +
-  scale_fill_gradientn('NDVI', colours = ndvi_pal, limits = c(-1, 1)) +
-  theme_classic() +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.title.x=element_blank(),
-        axis.title.y=element_blank(),
-        legend.key.size = unit(1.5, "cm"))
-
-
-april10 <- rast("Canada/NDVI/NOAA_files/AVHRR-Land_v005_AVH13C1_NOAA-19_20100410_c20170406113543.nc")
-c <- crop(april10, canada)
-plot(c$NDVI, col = ndvi_pal_lim)
