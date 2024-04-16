@@ -14,13 +14,16 @@ library("raster")
 
 
 #import data 
-canada <- geoboundaries("Canada")
+canada <- geoboundaries("Canada") #canada shapefile
 
+#import ndvi files
 worldvi <- unique(list.files(path = 'Canada/NDVI/NOAA_Files/', 
                              pattern = ".nc", full.names = T))
 
+#import elevation data
 elevation <- raster('Canada/elevation/wc2.1_30s/wc2.1_30s_elev.tif')
 
+#protected areas shapefile
 parks <- sf::st_read("Canada/PAs/ProtectedConservedArea.gdb")
 
 #remove marine protected areas and proposed protected areas
@@ -29,15 +32,10 @@ proposed <- parks$TYPE_E[grepl("Proposed", parks$TYPE_E)]
 st_geometry(parks) <- "GEOMETRY"
 terr.parks <- parks[(parks$TYPE_E %in% marine) == F,]
 terr.parks <- terr.parks[(terr.parks$TYPE_E %in% proposed) == F,]
-
 lg.parks <- terr.parks[(terr.parks$O_AREA_HA >= 5000),] #limit parks to parks 50 sq km or larger to match raster cells
-
 lg.parks <- st_transform(lg.parks, crs = "EPSG:4326") #reproject parks to the same crs as NDVI rasters
 
-#remove additional MPAs
-lg.parks <- lg.parks[-c(885, 910),]
-
-# check what files are corrupt ----
+# check what files are corrupt & redownload ----
 
 sizes <- file.size(worldvi) / 1e6
 hist(sizes, xlab = 'Approximate file size in MB')
@@ -87,16 +85,13 @@ while(any(corrupt)) {
 
 #crop, wrangle and annotate data ----
 
-for(i in 1250:length(worldvi)){
+for(i in 1:length(worldvi)){
   r <- rast(worldvi[i])
-  c <- crop(r, canada)
+  c <- crop(r, canada) #crop to canada
   c <- project(c, "EPSG:4326")
   
   #change to 50km resolution (now approximately 5)
   c <- aggregate(c, fact = 0.5/res(c))
-  
-  #reproject data to canada/Albers projection
-  # c <- project(c, "+proj=aea +lat_0=40 +lon_0=-96 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +type=crs") 
   
   if(!is.null(unique(c$NDVI))) {   #if the raster has no data, skip to next file
     
@@ -156,20 +151,12 @@ for(i in 1250:length(worldvi)){
   
 }
 
-
-
-
-#debugging test
-
-plot(c$NDVI)
-plot(lg.parks, bg = "transparent", add = T)
-
 #merge all data into one large dataframe----------------
 
 #import files
 canadvi <- list.files(path = 'Canada/reproj_data/',
                       pattern = '.rds', full.names = TRUE)
-
+#read all files
 d <- list()
 for(i in 1:length(canadvi)){
   r <- readRDS(canadvi[i])
@@ -203,14 +190,13 @@ ecozones <- st_transform(ecozones, crs = "EPSG:4326")
 
 data <- readRDS("Canada/data_full.rds")
 
+#convert data to sf file
 data.sf <- st_as_sf(data, coords = c("long", "lat"), crs = "EPSG:4326")
-
-missing <- ecozones[c(23,25),]
 
 ECO <- list()
 
 for(j in 1:nrow(ecozones)){
-  ed <- data.sf[which(st_within(data.sf, missing[j,], sparse = F)),]
+  ed <- data.sf[which(st_within(data.sf, ecozones[j,], sparse = F)),]
   ed$ecozone <- ecozones$ZONE_NAME[j]
   
   ECO[[j]] <- ed
@@ -219,8 +205,6 @@ for(j in 1:nrow(ecozones)){
 }
 
 dat <- do.call(rbind, ECO)
-
-#data.eco.sf <- rbind(regs23, data.eco) #bind the final regions together for full dataset
 
 #extract coordinates to turn back to dataframe - this step takes a long time
 coords <- dat %>%
@@ -260,6 +244,10 @@ saveRDS(data, "Canada/data_eco.rds")
 
 #add elevation to dataset--------------------------------------------------------
 
+##' this step was carried out after the model was run and the data processed, so the
+##' elevation values were added later and added on to the final dataset
+              
+                    
 #load in final dataset with predicted values
 p <- readRDS("Canada/predictions_march6.rds")
 
@@ -269,7 +257,7 @@ elevation_world <- elevation_global(0.5, "Canada/elevation")
 
 elevation <- crop(elevation_world, canada)
 
-#this should work without need for anything else
+#find elevation of each point and bind to dataset
 elevations <- terra::extract(elevation, coords)
 edata <- cbind(p, elevations)
 
