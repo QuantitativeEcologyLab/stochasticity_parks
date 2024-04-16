@@ -40,20 +40,20 @@ for(i in 1:length(yearlinks)) {
   for(j in 1:length(LINK.nc)) {
       
       download.file(LINK.nc[j], destfile = paste0("Canada/NDVI/NOAA_Files/",paste(filenames[i])))
+
+    Sys.sleep(2)  #pause between downloads to not overwhelm server
+    
     }
   
-  Sys.sleep(2)  
+  Sys.sleep(2)  #pause between downloads
   
 }
 
+#test one file to make sure files have downloaded correctly
 file <- "Canada/NDVI/NOAA_Files/AVHRR-Land_v005_AVH13C1_NOAA-07_19810624_c20170610041337.nc"
 
-testy <- terra::rast(file)
+test <- terra::rast(file)
 
-#test a single url to make sure it's working
-url2 <- "https://www.ncei.noaa.gov/data/land-normalized-difference-vegetation-index/access/1981/AVHRR-Land_v005_AVH13C1_NOAA-07_19810625_c20170610042839.nc"
-
-download.file(url2, destfile = "Canada/NDVI/AVHRR.files/AVHRR2.1981.nc")
 
 
 
