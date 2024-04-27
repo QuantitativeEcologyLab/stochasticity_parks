@@ -38,6 +38,8 @@ NDVI_cols <- colorRampPalette(rev(c("#0f2902", "#1d3900","#193401","#274009","#2
                                     "#3d4f21", "#485921","#536321","#69761f","#868924",
                                     "#8d8e37","#aaa263","#b5a975","#c2b58c","#c7b995",
                                     "#cdbf9f","#e3d6c6","#e7dbce")))
+eco_cols <- c("#d3d3d3","#005f73","#0a9396","#94d2bd", "#def7ec","#e9d8a6","#b58463", "#f9c74f","#d4a373",
+              "#ca6702","#bb3e03","#df8080","#9b2226")
 
 #check model residuals----------------------------------------------------------
 
@@ -171,9 +173,19 @@ ggsave("variance.png",
 
 #plot all ecozones
 ggplot() +
-  geom_raster(data = p, aes(x = long, y = lat, fill = ecozone)) +
-  scale_fill_discrete(name = "Ecozones") + 
+  geom_sf(data = ecozones, aes(fill = ZONE_NAME), color = "white") +
+  scale_fill_discrete(name = "Ecozones", type = eco_cols) + 
   geom_sf(data = canada, fill = NA, color = "black") + #add canada outline
+  geom_sf(data = lg.parks, fill = NA, color = "black") + #add protected areas outlines
+  coord_sf(crs = "EPSG:4326") +
+  annotation_scale(location = "bl", 
+                   width_hint = 0.2,
+                   pad_x = unit(0.18, "in")) +
+  annotation_north_arrow(location = "bl",
+                         which_north = "true", 
+                         pad_x = unit(0.5, "in"),
+                         pad_y = unit(0.5, "in"),
+                         style = north_arrow_fancy_orienteering) +
   theme_void() +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -182,7 +194,7 @@ ggplot() +
         legend.title = element_text("Ecozone"),
         legend.key.size = unit(0.5, "cm"))
 
-ggsave("ecozones.png",
+ggsave("ecoparks.png",
        width = 7.70,
        height = 5.76,
        dpi = 300,
