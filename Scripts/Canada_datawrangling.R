@@ -1,3 +1,9 @@
+# this script contains all the steps taken to annotate NOAA AVHRR NDVI data, which was downloaded
+# at a 5km resolution but was reprojected to approximately 50km resolution to reduce computational
+# load. the updated script 'canada_5km_mrf_wrangling.R` contains the updated version of this script,
+# in which the data was kept at the original 5km resolution, as well as more efficient data 
+# annotation steps. 
+
 library('tidyr')
 library("rlang") 
 library('lubridate')
