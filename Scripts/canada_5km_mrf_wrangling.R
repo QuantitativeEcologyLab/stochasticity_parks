@@ -23,7 +23,7 @@ ecodistricts <- st_transform(ecodistricts, crs = "EPSG:4326")
 
 #crop and wrangle NDVI files ---------------------------------
 
-registerDoMC(10)
+registerDoMC(10) #register how many cores you want to use for this
 
 foreach(i = 1:length(worldvi)) %dopar% {
   r <- rast(worldvi[i])
@@ -102,6 +102,10 @@ foreach(i=1001:length(canadvi)) %dopar% {
 }
 
 #read in all the final data files and bind them into one ----------
+
+#because the final dataset is larger than the number of rows R can handle, 
+#the data was imported in subsets, subset again, then merged together to generate
+#useable subsets of the data
 
 plan(multicore, workers = 5)
 
