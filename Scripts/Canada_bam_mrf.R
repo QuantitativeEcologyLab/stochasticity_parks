@@ -47,18 +47,17 @@ canada.mrf.small <-
       park + #ecozone +
       # global smooths
       s(ecodistrict, bs = 'mrf', xt = list(nb = nb)) + #specify knots?
-      s(x, y, bs = 'ds', k = 300) + #area effect
+      s(x, y, bs = 'ds', k = 800) + #area effect
       s(year, bs = 'tp', k = 10) + #year effect
-      s(doy, bs = 'cc', k = 15), #seasonal/day of year effect
+      s(doy, bs = 'cc', k = 15) + #seasonal/day of year effect
+      s(elevation, bs = "tp", k = 5), #elevation effect
       # in/out level smooths
-      # s(year, park, bs = 'fs', k = 12) + #yearly trends in parks
-      # s(doy, park, bs = 'fs', k = 12, xt = list(bs = 'cc')) + #seasonal trends in parks
-      # s(doy, ecozone, bs = 'fs', k = 12, xt = list(bs = 'cc')) +
-      # s(year, ecozone, bs = 'fs', k = 12) +
-      # # tensor interaction terms
-      # ti(year, doy, bs = c('cr', 'cc'), k = c(12, 10)) + #yearly trends over time
-      # ti(long, lat, year, bs = c('ds', 'cr'), d = c(2, 1), k = c(25, 10)) + 
-      # ti(long, lat, doy, bs = c('ds', 'cc'), d = c(2, 1), k = c(25, 10)),
+      s(year, park, bs = "fs", k = 12) + 
+      s(doy, park, bs = "fs", k = 12, xt = list(bs = "cc")) + 
+      #tensor interaction smooths
+      ti(year, doy, bs = c("cr", "cc"), k = c(12, 10)) + 
+      ti(x, y, year, bs = c("ds", "cr"), d = c(2, 1), k = c(50, 10)) + 
+      ti(x, y, doy, bs = c("ds", "cc"), d = c(2, 1), k = c(50, 10)),
     family = betar(), #beta location scale distribution for the data
     data = d,
     method = 'fREML',
