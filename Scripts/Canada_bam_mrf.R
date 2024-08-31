@@ -96,3 +96,84 @@ VAR <- r %>%
 #save the resulting datasets
 saveRDS(r, "Canada/Data_annotated/5km_annotated_400MB_predict.rds")
 saveRDS(VAR, "Canada/Data_annotated/5km_400MB_variance.rds")
+
+#additional statistics ------------------------------------------------------
+
+#find average variance and confidence intervals
+model <- lm(var ~ 1, VAR)
+confint.lm(model, level = 0.95)
+
+#correlation between mean and variance
+cor.test(x = VAR$mean, y = VAR$var, method = "spearman")
+
+#model variance within and outside of parks
+
+var.park.gamma <- gam(var ~ park, data = VAR,  family = "Gamma")
+plot(var.park.gamma)
+
+#calculate quantiles
+
+quantile(VAR$mean, probs = 0.7) #0.1127625 
+quantile(VAR$var, probs = 0.3, na.rm = TRUE) #0.002437498 
+quantile(VAR$cv, probs = 0.3) 
+
+VAR$mean.quant <- with(VAR, ifelse(mean >= quantile(VAR$mean, probs = 0.7), 1, 0))
+VAR$var.quant <- with(VAR, ifelse(var <= quantile(VAR$var, probs = 0.3, na.rm = TRUE), 1, 0))
+VAR$cv.quant <- with(VAR, ifelse(cv <= quantile(VAR$cv, probs = 0.3), 1, 0))
+
+#statistics for quantiles
+
+#average NDVI of top mean quantile
+mean(VAR$mean[VAR$mean.quant == 1])
+model <- lm(mean ~ 1, VAR[VAR$mean.quant == 1,])
+confint.lm(model, level = 0.95)
+
+#average variance of bottom variance quantile
+mean(na.omit(VAR$var[VAR$var.quant == 1]))
+model <- lm(na.omit(var) ~ 1, na.omit(VAR[VAR$var.quant == 1,]))
+confint.lm(model, level = 0.95)
+
+#percentage of each quantile found in PAs
+
+VAR <- na.omit(VAR)
+
+#amount of high productivity land protected
+VAR %>%
+  group_by(park, mean.quant) %>%
+  summarise(percent = 100 * n() / nrow(VAR))
+#3.22% of highest productivity land is protected
+
+(3.22*9984670)/100 #sq km of protected land in this quantile
+(26.78*9984670)/100 #sq km of remaining land to protect in this quantile
+
+#amount of low variance land protected
+VAR %>%
+  group_by(park, var.quant) %>%
+  summarise(percent = 100 * n() / nrow(VAR))
+#3.56% of lowest variance land is protected
+
+(3.56*9984670)/100 #sq km of protected land in this quantile
+(26.44*9984670)/100 #sq km of remaining land to protect in this quantile
+
+#amount of ideal land protected
+VAR %>%
+  group_by(park, cv.quant) %>%
+  summarise(percent = 100 * n() / nrow(VAR))
+#3.81% of ideal land is protected
+
+(3.81*9984670)/100 #sq km of protected land in this quantile
+(26.19*9984670)/100 #sq km of remaining land to protect in this quantile
+
+#mean and confidence intervals of specific ecozones
+
+mci.eco <- function(ecozone = 1){
+  
+  mean(VAR$mean[VAR$ecozone == ecozone])
+  
+  model <- lm(mean ~ 1, VAR[VAR$ecozone == ecozone,])
+  confint.lm(model, level = 0.95)
+  
+  }
+
+mci.eco(15)
+
