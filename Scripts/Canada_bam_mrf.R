@@ -166,14 +166,60 @@ VAR %>%
 
 #mean and confidence intervals of specific ecozones
 
-mci.eco <- function(ecozone = 1){
+#create table of stats for an ecozone
+eco.table <- function(ecozone = 1){
   
-  mean(VAR$mean[VAR$ecozone == ecozone])
-  
-  model <- lm(mean ~ 1, VAR[VAR$ecozone == ecozone,])
-  confint.lm(model, level = 0.95)
+  tibble(
+    ecozone = ecozone,
+    #mean statistics
+    mean = mean(VAR$mean[VAR$layer == ecozone]),
+    upper.mean.confint = confint.lm(lm(mean ~ 1, VAR[VAR$layer == ecozone,]), level = 0.95)[2],
+    lower.mean.confint = confint.lm(lm(mean ~ 1, VAR[VAR$layer == ecozone,]), level = 0.95)[1],
+    mean.parks = mean(na.omit(VAR$mean[c(VAR$layer == ecozone & VAR$park == 1)])),
+    upper.mean.parks.confint = confint.lm(lm(mean ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 1),]), level = 0.95)[2],
+    lower.mean.parks.confint = confint.lm(lm(mean ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 1),]), level = 0.95)[1],
+    mean.out = mean(na.omit(VAR$mean[c(VAR$layer == ecozone & VAR$park == 0)])),
+    upper.mean.out.confint = confint.lm(lm(mean ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 0),]), level = 0.95)[2],
+    lower.mean.out.confint = confint.lm(lm(mean ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 0),]), level = 0.95)[1],
+    #variance statistics
+    var = mean(VAR$var[VAR$layer == ecozone]),
+    upper.var.confint = confint.lm(lm(var ~ 1, VAR[VAR$layer == ecozone,]), level = 0.95)[2],
+    lower.var.confint = confint.lm(lm(var ~ 1, VAR[VAR$layer == ecozone,]), level = 0.95)[1],
+    var.parks = mean(na.omit(VAR$var[c(VAR$layer == ecozone & VAR$park == 1)])),
+    upper.var.parks.confint = confint.lm(lm(var ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 1),]), level = 0.95)[2],
+    lower.var.parks.confint =  confint.lm(lm(var ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 1),]), level = 0.95)[1],
+    var.out = mean(na.omit(VAR$var[c(VAR$layer == ecozone & VAR$park == 0)])),
+    upper.var.out.confint = confint.lm(lm(var ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 0),]), level = 0.95)[2],
+    lower.var.out.confint = confint.lm(lm(var ~ 1, VAR[c(VAR$layer == ecozone & VAR$park == 0),]), level = 0.95)[1],
+    
+  )
   
   }
 
-mci.eco(15)
+eco.table(1)
+
+#generate tables for each ecozone & merge them all into 1 table
+
+eco.1 <- eco.table(1)
+eco.2 <- eco.table(2)
+eco.3 <- eco.table(3)
+eco.4 <- eco.table(4)
+eco.5 <- eco.table(5)
+eco.6 <- eco.table(6)
+eco.7 <- eco.table(7)
+eco.8 <- eco.table(8)
+eco.9 <- eco.table(9)
+eco.10 <- eco.table(10)
+eco.11 <- eco.table(11)
+eco.12 <- eco.table(12)
+eco.13 <- eco.table(13)
+eco.14 <- eco.table(14)
+eco.15 <- eco.table(15)
+
+eco.data <- rbind(eco.1, eco.2, eco.3, eco.4, eco.5, eco.6, eco.7, eco.8, eco.9, eco.10,
+                  eco.11, eco.12, eco.13, eco.14, eco.15)
+
+#save
+
+write.csv(eco.data, 'Canada/ecozone.stats.csv')
 
