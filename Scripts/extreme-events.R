@@ -6,6 +6,25 @@ library('tidyr')      # for data wrangling
 library('terra')      # for raster data (masks tidyr::extract())
 library('ggplot2')    # for fancy plots
 library('cowplot')    # for fancy plots in grids
+library('ggspatial')  # for maps in ggplot2
+
+theme_set(
+  theme_classic() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.title.y = element_text(size = 9, family = 'sans', face = 'bold'),
+          axis.title.x = element_text(size = 9, family = 'sans', face = 'bold'),
+          axis.text.y = element_text(size = 8, family = 'sans'),
+          axis.text.x = element_text(size = 8, family = 'sans'),
+          legend.background = element_rect(fill = 'transparent'),
+          legend.key.size = unit(0.5, 'cm'),
+          legend.spacing.y = unit(0.1, 'cm'),
+          legend.text = element_text(size = 6, family = 'sans', face = 'bold'),
+          panel.background = element_rect(fill = 'transparent'),
+          plot.background = element_rect(fill = 'transparent', color = NA),
+          plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), 'cm'), #top, left, bottom, right
+          legend.position = 'inside',
+          legend.position.inside = c(0.25, 0.9)))
 
 prov <- canadianmaps::PROV %>%
   st_geometry() %>%
@@ -27,7 +46,7 @@ plot(prov, add = TRUE)
 
 #' change the working directory as required by `climatenaR`
 #' this directory should have all the files for climateNA to run
-setwd('H:/GitHub/rekha-temp/climatena')
+setwd('climatena')
 writeRaster(dem, 'can-dem-z1.tif')
 plot(rast('can-dem-z1.tif'))
 plot(prov, add = TRUE)
@@ -60,13 +79,14 @@ map(2022:1901,
     })
 
 # single mean and sd for each pixel to get number of events outside mean +/- 2SE
+setwd('..')
 COLS <- c('Latitude', 'Longitude', 'Elevation', 'Tave01', 'Tave02',
           'Tave03', 'Tave04', 'Tave05', 'Tave06', 'Tave07', 'Tave08',
           'Tave09', 'Tave10', 'Tave11', 'Tave12')
 
 extremes <-
   map_dfr(
-    list.files('can-dem-z1', full.names = TRUE, pattern = 'csv'),
+    list.files('climatena/can-dem-z1', full.names = TRUE, pattern = 'csv'),
     \(.f) data.table::fread(.f, na.strings = '-9999', select = c(COLS))) %>%
   filter(! is.na(Tave01)) %>%
   pivot_longer(Tave01:Tave12, values_to = 'temp_C', names_to = 'month') %>%
@@ -79,18 +99,28 @@ extremes <-
          s2 = extract(s2_r, data.frame(Longitude, Latitude))[, 2],
          cv = extract(cv_r, data.frame(Longitude, Latitude))[, 2])
 
+extremes_rast <- rast(select(extremes, Longitude, Latitude, n_extr)) %>%
+  `crs<-`('EPSG:4326') %>%
+  project('ESRI:102001')
+plot(extremes_rast)
+extremes_rast <- as.data.frame(extremes_rast, xy = TRUE)
+
 # get summary statistics
 sum(extremes$n_extr)
 range(extremes$n_extr)
 
 map <-
-  ggplot(extremes) +
-  coord_sf(crs = 'EPSG:4326') +
-  geom_raster(aes(Longitude, Latitude, fill = n_extr)) +
+  ggplot(extremes_rast) +
+  geom_raster(aes(x, y, fill = n_extr)) +
+  geom_sf(data = st_transform(prov, 'ESRI:102001'), fill = 'transparent',
+          color = 'black', lwd = 0.5) +
   khroma::scale_fill_acton(name = 'Number of extreme temperature events',
                            reverse = TRUE, limits = c(50, 90)) +
-  theme_bw() +
-  theme(legend.position = 'top', panel.grid = element_blank())
+  theme_map() +
+  theme(legend.position = 'top', legend.justification = 'center',
+        panel.grid = element_blank(),
+        legend.key.width = rel(2),
+        text = element_text(face = 'bold'))
 
 # scatterplots of extreme events by mean, variance, and CV
 scatters <-
@@ -111,14 +141,14 @@ scatters <-
   labs(x = NULL, y = 'Number of extreme\ntemperature events') +
   scale_color_manual(values = c('forestgreen', 'dodgerblue3', '#93799a'),
                      aesthetics = c('color', 'fill')) +
-  theme_bw() +
   theme(legend.position = 'top', panel.grid = element_blank(),
         strip.placement = 'outside', strip.background = element_blank(),
-        strip.text = element_text(size = 11))
+        strip.text = element_text(size = 11),
+        text = element_text(face = 'bold'))
 
 # plot the two together
 plot_grid(map, scatters, ncol = 1, rel_heights = c(3, 1),
           labels = c('a', 'b'))
 
-ggsave('../Figures/canada-extreme-events.png', width = 8, height = 11,
+ggsave('Figures/canada-extreme-events.png', width = 8, height = 9,
        scale = 1.1, dpi = 600, bg = 'white')
