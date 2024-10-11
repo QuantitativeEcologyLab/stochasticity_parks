@@ -323,7 +323,7 @@ saveRDS(VAR, "Canada/results/VAR.rds")
 
 #boxplot to plot mean in different ecozones
 boxmean <- 
-  ggplot(edata, aes(x = layer, y = mean, fill = park)) +
+  ggplot(VAR, aes(x = layer, y = mean, fill = park)) +
   geom_boxplot(outlier.size = 0.3, lwd = 0.2) +
   scale_fill_manual(name = "", labels = c("Outside parks", "Within parks"), values=c("#A7C957", "darkgreen")) +
   scale_x_discrete(labels=c("2" = "Northern Arctic", "1" = "Arctic Cordillera", "3" = "Southern Arctic", "9" = "Boreal Plain",
@@ -454,7 +454,7 @@ parkdoyvar <-
 
 #boxplot to plot mean in different ecozones
 boxvar <- 
-  ggplot(edata, aes(x = layer, y = var, fill = park)) +
+  ggplot(VAR, aes(x = layer, y = var, fill = park)) +
   geom_boxplot(outlier.size = 0.3, lwd = 0.2) +
   scale_fill_manual(name = "", labels = c("Outside parks", "Within parks"), values=c('lightskyblue2', 'dodgerblue3')) +
   scale_x_discrete(labels=c("2" = "Northern Arctic", "1" = "Arctic Cordillera", "3" = "Southern Arctic", "9" = "Boreal Plain",
@@ -942,4 +942,34 @@ ggsave('cv.png',
        bg = "transparent",
        dpi = 600)
 
+#correlation between mean and variance (appendix) ---------------------------------
+
+FIG <- 
+ggplot(data=DATA, aes(x=mean, y=var)) +
+  geom_point(size = 1, alpha = 0.3,stroke = 0,shape=16) +
+  ylab("Variance in NDVI") +
+  xlab("Mean NDVI") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(size=8, family = "sans", face = "bold"),
+        axis.title.x = element_text(size=8, family = "sans", face = "bold"),
+        axis.text.y = element_text(size=6, family = "sans"),
+        axis.text.x  = element_text(size=6, family = "sans"),
+        plot.title = element_text(hjust = -0.05, size = 12, family = "sans", face = "bold"),
+        legend.position = "none",
+        panel.background = element_rect(fill = "transparent"),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm")) +
+  scale_x_continuous(limits = c(-0.1,0.5), expand = c(0.01,0)) +
+  scale_y_continuous(limits = c(0,0.032), expand = c(0.01,0))
+
+
+
+#Save the figure
+ggsave(FIG,
+       width = 6.86, height = 4.5, units = "in",
+       dpi = 600,
+       bg = "transparent",
+       file="Mean_Var_Correlation.png")
 
