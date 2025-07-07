@@ -5,9 +5,9 @@
 *.db
 
 # data files > 100 MB
-Data/parks/BDCAPC_CPCAD_2024.cpg
-Data/parks/BDCAPC_CPCAD_2024.dbf
-Data/parks/BDCAPC_CPCAD_2024.prj
-Data/parks/BDCAPC_CPCAD_2024.shp
-Data/parks/BDCAPC_CPCAD_2024.shp.xml
-Data/parks/BDCAPC_CPCAD_2024.shx
+Data/protected-areas/BDCAPC_CPCAD_2024.cpg
+Data/protected-areas/BDCAPC_CPCAD_2024.dbf
+Data/protected-areas/BDCAPC_CPCAD_2024.prj
+Data/protected-areas/BDCAPC_CPCAD_2024.shp
+Data/protected-areas/BDCAPC_CPCAD_2024.shp.xml
+Data/protected-areas/BDCAPC_CPCAD_2024.shx
