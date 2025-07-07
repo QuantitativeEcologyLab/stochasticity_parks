@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+	<idinfo>
+		<descript>
+			<abstract>This dataset represents ecological districts within Canada.&lt;br /&gt;
+&lt;br /&gt;
+Ecodistricts are a subdivision of an ecoregion characterized by a&lt;br /&gt;
+&lt;br /&gt;
+distinctive assemblages of relief, landforms, geology, soil, vegetation,&lt;br /&gt;
+&lt;br /&gt;
+water bodies and fauna. For example, the Jeddore Lake ecodistrict (no.&lt;br /&gt;
+&lt;br /&gt;
+473) is one of five within the Maritime Barrens ecoregion.  Ecodistricts&lt;br /&gt;
+&lt;br /&gt;
+are the smallest ecological unit currently mapped by the Canada&lt;br /&gt;
+&lt;br /&gt;
+Ecological Stratification Working Group. The largest ecological unit&lt;br /&gt;
+&lt;br /&gt;
+assigned in Canada (Ecozone) of which each ecodistrict is contained is&lt;br /&gt;
+&lt;br /&gt;
+also included in the attribute table. Further information on assigned&lt;br /&gt;
+&lt;br /&gt;
+ecozone, ecoregion and ecodistrict numbers can be found at (http://sis.agr.gc.ca/cansis/nsdb/ecostrat/intro.html).</abstract>
+			<purpose>The purpose of this dataset is to represent ecological districts within Canada.</purpose>
+			<supplinf/>
+		</descript>
+		<useconst>&lt;a rel="license" style="float:right;" href="http://creativecommons.org/licenses/by/3.0/" target="_blank"&gt;&lt;img alt="Creative Commons License" style="border-width:0" src="http://creativecommons.org/images/public/somerights20.png" /&gt;&lt;/a&gt;This work is licensed under a &lt;a rel="license" href="http://creativecommons.org/licenses/by/3.0/" target="_blank"&gt;Creative Commons Attribution 3.0 License&lt;/a&gt;.</useconst>
+		<datacred>This dataset was retrieved from the Canadian National Land and Water Information Service by the Conservation Biology Institute (CBI) 12/2007.  The original dataset lacked metadata.  The metadata presented here was compiled by CBI from information posted at (http://sis.agr.gc.ca/cansis/nsdb/ecostrat/intro.html).</datacred>
+		<citation>
+			<citeinfo>
+				<title>Canada Ecodistricts</title>
+				<pubdate/>
+				<othercit/>
+				<origin>Canada Ecological Stratification Working Group  (http://sis.agr.gc.ca/cansis/nsdb/ecostrat/intro.html)</origin>
+				<onlink>http://app.databasin.org/app/pages/datasetPage.jsp?id=8dca767690af48e6ae5581b34612a19d</onlink>
+				<pubinfo>
+					<publish/>
+					<pubplace/>
+				</pubinfo>
+			</citeinfo>
+		</citation>
+		<ptcontac>
+			<cntinfo>
+				<cntperp>
+					<cntper/>
+					<cntorg>&lt;a href="http://sis.agr.gc.ca/cansis/nsdb/ecostrat/intro.html" target="_self"&gt;Canada Ecological Stratification Working Group&lt;/a&gt;</cntorg>
+				</cntperp>
+				<cntemail/>
+			</cntinfo>
+		</ptcontac>
+		<status>
+			<progress/>
+			<update/>
+		</status>
+		<timeperd>
+			<timeinfo>
+				<sngdate/>
+				<current/>
+			</timeinfo>
+		</timeperd>
+		<keywords/>
+		<spdom>
+			<bounding>
+				<northbc>83.63315436855596</northbc>
+				<eastbc>-52.36457605933944</eastbc>
+				<southbc>41.673537744926875</southbc>
+				<westbc>-140.9994207137727</westbc>
+			</bounding>
+		</spdom>
+	</idinfo>
+	<dataqual>
+		<attracc>
+			<attraccr/>
+		</attracc>
+		<complete/>
+		<lineage/>
+	</dataqual>
+	<eainfo>
+		<detailed>
+			<attr>
+				<attrlabl>FID</attrlabl>
+				<attalias>FID</attalias>
+				<attrdef/>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>Shape</attrlabl>
+				<attalias>Shape</attalias>
+				<attrdef/>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>ECOREGION</attrlabl>
+				<attalias>ECOREGION</attalias>
+				<attrdef>The unique identifier of the Ecoregion</attrdef>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>ECODISTRIC</attrlabl>
+				<attalias>ECODISTRIC</attalias>
+				<attrdef>The unique identifier of the Ecodistrict</attrdef>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>ACRES</attrlabl>
+				<attalias>ACRES</attalias>
+				<attrdef>Acres, calculated using Albers Canada Equal Area Projection</attrdef>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>HA</attrlabl>
+				<attalias>HA</attalias>
+				<attrdef>Hectares, calculated using Albers Canada Equal Area Projection</attrdef>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>zone_name</attrlabl>
+				<attalias>zone_name</attalias>
+				<attrdef>Ecozone Name</attrdef>
+				<attrdomv/>
+			</attr>
+			<attr>
+				<attrlabl>ECOZONE</attrlabl>
+				<attalias>ECOZONE</attalias>
+				<attrdef>The unique identifier of the Ecozone</attrdef>
+				<attrdomv/>
+			</attr>
+		</detailed>
+	</eainfo>
+	<distinfo>
+		<resdesc>Canada Ecodistricts</resdesc>
+		<distrib>
+			<cntinfo>
+				<cntorgp>
+					<cntorg>Data Basin (www.databasin.org)</cntorg>
+				</cntorgp>
+				<cntemail>databasin@consbio.org</cntemail>
+				<cntorgp/>
+			</cntinfo>
+			<cntinfo/>
+			<cntinfo/>
+		</distrib>
+		<stdorder>
+			<digform>
+				<digtopt>
+					<onlinopt>
+						<computer>
+							<networka>
+								<networkr>http://app.databasin.org/app/pages/datasetPage.jsp?id=8dca767690af48e6ae5581b34612a19d</networkr>
+							</networka>
+						</computer>
+					</onlinopt>
+				</digtopt>
+			</digform>
+		</stdorder>
+	</distinfo>
+	<Esri><CreaDate>20110514</CreaDate><CreaTime>07234800</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><itemProps><itemLocation><linkage Sync="TRUE">file://\\IP-0A5317A4\C\arcgisserver\services\im2\8dca767690af48e6ae5581b34612a19d\8dca767690af48e6ae5581b34612a19d\commondata\data0\Canada_Ecodistricts</linkage><protocol Sync="TRUE">Local Area Network</protocol></itemLocation></itemProps><copyHistory><copy source="C:\arcgisserver\services\im2\8dca767690af48e6ae5581b34612a19d\commondata\data0\Canada_Ecodistricts" dest="\\IP-0A5317A4\C\arcgisserver\services\im2\8dca767690af48e6ae5581b34612a19d\8dca767690af48e6ae5581b34612a19d\commondata\data0\Canada_Ecodistricts" date="20110514" time="07234800"></copy></copyHistory></DataProperties></Esri></metadata>
