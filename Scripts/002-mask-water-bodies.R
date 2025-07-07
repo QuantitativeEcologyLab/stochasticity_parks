@@ -127,5 +127,5 @@ plot(st_geometry(canadianmaps::PROV), col = 'transparent',
      border = 'white', add = TRUE)
 
 # save and check the raster
-writeRaster(r_bodies, 'Data/water-body-raster-canada.tif')
-plot(rast('Data/water-body-raster-canada.tif'))
+writeRaster(r_bodies, 'Data/proportion-water.tif')
+plot(rast('Data/proportion-water.tif'))
