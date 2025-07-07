@@ -11,7 +11,10 @@ library('ggplot2')   # for fancy plots
 
 # raster files are kept in a different project repo folder
 # not copied over to save space and avoid corruption during copy
-CRS <- crs(rast('../ndvi-stochasticity/data/avhrr-viirs-ndvi/raster-files/AVHRR-Land_v005_AVH13C1_NOAA-07_19810624_c20170610041337.nc'))
+r_0 <- list.files('../ndvi-stochasticity/data/avhrr-viirs-ndvi/raster-files',
+                  pattern = '.nc', full.names = TRUE)[1] %>%
+  rast(lyr = 'QA')
+CRS <- crs(r_0)
 
 prov <- st_transform(canadianmaps::PROV, CRS) %>%
   st_make_valid() %>%
@@ -115,10 +118,7 @@ bodies <- bodies %>%
 # not masking to keep to find coastlines
 r_bodies <- bodies %>%
   vect() %>%
-  rasterize(y = rast(list.files(path = 'data/avhrr-viirs-ndvi/raster-files',
-                                pattern = '.nc', full.names = TRUE)[1],
-                     lyr = 'QA'),
-            cover = TRUE, background = 0) %>%
+  rasterize(y = r_0, cover = TRUE, background = 0) %>%
   crop(prov_bbox_wide) %>%
   mask(prov_bbox_wide)
 
