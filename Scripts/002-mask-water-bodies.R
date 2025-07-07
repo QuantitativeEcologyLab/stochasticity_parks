@@ -7,11 +7,7 @@ library('terra')     # for rasters
 library('elevatr')   # for digital elevation models
 library('lubridate') # for working with dates
 library('purrr')     # for functional programming
-library('furrr')     # for parallelized functional programming
-library('mgcv')      # for GAMs
 library('ggplot2')   # for fancy plots
-library('cowplot')   # for fancy plots in grids 
-library('gratia')    # for fancy plots of GAMs
 
 # raster files are kept in a different project repo folder
 # not copied over to save space and avoid corruption during copy
