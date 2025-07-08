@@ -1,3 +1,0 @@
-- add proportion of water in GAM after dropping points with prop > 0.5
-- find and push shapefiles of ecodistrict, and parks
-- use `park` 0/1 for `by` smooth to estimate difference
