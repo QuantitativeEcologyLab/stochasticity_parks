@@ -114,7 +114,7 @@ d <-
 saveRDS(d, 'Data/ndvi-data.rds')
 
 # check dataset size relative to max data frame size
-nrow(d) / .Machine$integer.max
+nrow(d) / .Machine$integer.max # 27.4%
 
 # for testing
 library('ggplot2')
