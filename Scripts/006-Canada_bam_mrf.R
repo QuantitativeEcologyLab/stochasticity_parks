@@ -9,32 +9,29 @@ library('spdep')     # to run neighbour analysis
 library('terra')     # for rasters
 source('Functions/scale-ndvi.R') # to scale NDVI to [0, 1] and back
 
-#import dataset + transform the data ----------------------------------
-d <- readRDS('Data/ndvi-data.rds') %>%
-  filter(prop_water < 0.5) %>% # drop pixels that are mostly water
-  select(! c(QA, date, ecodistrict)) %>%
-  mutate(across(c(year, doy, pa), .fns = as.integer))
-
-ecodistricts <- st_read("Data/ecodistricts/Canada_Ecodistricts.shp") %>%
-  st_geometry() %>%
-  st_as_sf() %>%
-  st_transform(crs = "EPSG:4326") %>%
-  mutate(id = 1:n()) %>%
-  filter(id %in% unique(d$ecodistrict))
-
-plot(ecodistricts)
-plot(rast('Data/ecodistricts/ecodistrict-id.tif'))
-plot(st_geometry(ecodistricts), add = TRUE, lwd = 0.2)
-
-d$ecodistrict <- as.factor(d$ecodistrict)
-
-#create object to hold neighbour structure ---------------------------
-#extract neighbour structure
-nb <- poly2nb(ecodistricts, row.names = ecodistricts$id)
-names(nb) <- attr(nb, "region.id")
+#import dataset (imports within a few minutes)
+d <- readRDS('Data/ndvi-data.rds')
 
 # test spatial smooth only (only using first 100 rasters) ----
 if(FALSE) {
+  ecodistricts <-
+    st_read("Data/ecodistricts/Canada_Ecodistricts.shp") %>%
+    st_geometry() %>%
+    st_as_sf() %>%
+    st_transform(crs = "EPSG:4326") %>%
+    mutate(id = 1:n()) %>%
+    filter(id %in% unique(d$ecodistrict))
+  
+  plot(ecodistricts)
+  plot(rast('Data/ecodistricts/ecodistrict-id.tif'))
+  plot(st_geometry(ecodistricts), add = TRUE, lwd = 0.2)
+  
+  d$ecodistrict <- as.factor(d$ecodistrict)
+  
+  # make a list of neighbors
+  nb <- poly2nb(ecodistricts, row.names = ecodistricts$id)
+  names(nb) <- attr(nb, "region.id")
+
   d_0 <- filter(d, date <= as.Date('1981-10-01')) %>%
     mutate(NDVI_scaled = ndvi_to_01(NDVI))
   nrow(ecodistricts) #' to find max `k` for MRF smooth
@@ -82,6 +79,12 @@ hist(fitted(m_sos_0) / fitted(m_sos_0_beta), breaks = 100)
 
 # run full model -----------------------------------------------
 # not using MRF smooth because it results in visibly discrete areas
+d <- d %>%
+  filter(prop_water < 0.5) %>% # drop pixels that are mostly water
+  select(! c(QA, date, ecodistrict)) %>%
+  mutate(across(c(year, doy, pa), .fns = as.integer))
+gc()
+
 tictoc::tic()
 m <-
   bam(
@@ -100,7 +103,7 @@ m <-
       ti(y, x, year, bs = c('sos', 'cr'), d = c(2, 1), k = c(500, 5)) +
       ti(y, x, doy, bs = c('sos', 'cc'), d = c(2, 1), k = c(500, 5)),
     family = gaussian(),
-    data = slice_sample(d, n = 1e5),
+    data = d,
     method = 'fREML',
     discrete = TRUE,
     knots = list(doy = c(0.5, 366.5)),
@@ -108,13 +111,14 @@ m <-
     control = gam.control(trace = TRUE))
 tictoc::toc()
 
-png('Figures/temp.png', width= 8, height = 8, units = 'in', res = 300)
-plot(m, pages = 1, scheme = c(1, 5, rep(1, 5)), scale = 0, too.far = 0.01)
+png('Figures/full-model-terms.png', width= 8, height = 8, units = 'in', res = 300)
+plot(m, pages = 1, scheme = c(1, 5, rep(1, 5), rep(4, 3)),
+     scale = 0, too.far = 0.01)
 dev.off()
 
-plot(m, select = 1, scheme = 3, n2 = 100, too.far = 0.02)
-
 saveRDS(m, paste0('Models/canada-mean-ndvi-aggr-2-', Sys.Date(), '.rds'))
+
+#' *continue editing from here*
 
 canada.mrf.small <- readRDS('Canada/models/ndvi_simplemrf_betals_jun20.rds')
 
