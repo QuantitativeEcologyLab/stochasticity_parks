@@ -55,17 +55,20 @@ plot(r_el > 0)
 
 # import a data frame of all dates
 # see https://github.com/QuantitativeEcologyLab/ndvi-stochasticity for info
-dates <- readRDS('../ndvi-stochasticity/data/avhrr-viirs-ndvi/ndvi-raster-metadata.rds') %>%
-  # rasters are not saved in this repo
-  mutate(file_name = paste0('../ndvi-stochasticity/', file_name))
+dates <- readRDS('../ndvi-stochasticity/data/avhrr-viirs-ndvi/ndvi-raster-metadata.rds')
 
 # some dates are missing a raster (not available on the server)
 all(! is.na(dates$file_name))
 mean(! is.na(dates$file_name))
 filter(dates, is.na(file_name))
 
+# rasters are not saved in this repo
+dates <- dates %>%
+  filter(! is.na(file_name)) %>% # rm missing rasters
+  mutate(file_name = paste0('../ndvi-stochasticity/', file_name))
+
 # create the aggregated datasets
-# spatRast objects cannot be run in parallel and moved across sessions:
+# spatRast objects moved across parallelized sessions, but data frames can
 # https://stackoverflow.com/questions/67445883/terra-package-returns-error-when-try-to-run-parallel-operations/67449818#67449818
 shp <- st_read('Data/ecodistricts/Canada_Ecodistricts.shp') %>%
   st_geometry() %>%
@@ -76,30 +79,30 @@ NCORES <- min(availableCores() - 4, 60)
 plan(multisession, workers = NCORES)
 
 d <-
-  dates %>%
-  filter(! is.na(file_name)) %>% # drop missing rasters
-  mutate(
-    # ndvi data
-    ndvi_data = future_map2(file_name, date, \(fn, .date) {
-      .r <- rast(fn, lyr = c('NDVI', 'QA')) %>%
-        crop(shp, mask = TRUE)
-      .month <- month(.date)
-      
-      # drop cloudy pixels
-      .r$NDVI <- ifel(is_flagged(.r$QA, flag_position = 1), NA, .r$NDVI)
-      
-      # remove unrealistically high NDVI values at high latitudes
-      # (are no cells above 70 N, so not filtering in sept or oct)
-      if(.month %in% c(1:4, 11:12)) {
-        # create a raster with TRUE if above max latitude 
-        .lats <- init(.r, 'y') >= 60
-        .r$NDVI <- ifel(.r$NDVI > 0.2 & .lats, NA, .r$NDVI)
-      }
-      
-      return(as.data.frame(.r, xy = TRUE, na.rm = TRUE))
-    }, .progress = TRUE, .options = furrr_options(seed = NULL))) %>%
-  select(! c(file_name, n_cells)) %>%
-  unnest(ndvi_data) %>%
+  #' `tidyr::unnest()` without `aggregate(2)` used > TB of RAM!
+  future_map2(dates$file_name, dates$date, \(.fn, .date) {
+    .r <- rast(.fn, lyr = c('NDVI', 'QA')) %>%
+      crop(shp, mask = TRUE)
+    .month <- month(.date)
+    
+    # drop cloudy pixels
+    .r$NDVI <- ifel(is_flagged(.r$QA, flag_position = 1), NA, .r$NDVI)
+    
+    # remove unrealistically high NDVI values at high latitudes
+    # (are no cells above 70 N, so not filtering in sept or oct)
+    if(.month %in% c(1:4, 11:12)) {
+      # create a raster with TRUE if above max latitude 
+      .lats <- init(.r, 'y') >= 60
+      .r$NDVI <- ifel(.r$NDVI > 0.2 & .lats, NA, .r$NDVI)
+    }
+    
+    .r %>%
+      aggregate(2, na.rm = TRUE) %>% # to ensure data frame does not exceed max size
+      as.data.frame(xy = TRUE, na.rm = TRUE) %>%
+      mutate(date = .date) %>%
+      return()
+  }, .progress = TRUE, .options = furrr_options(seed = NULL)) %>%
+  bind_rows() %>%
   mutate(
     pa = extract(r_pa, select(., x, y))[, 2],
     ecodistrict = extract(r_ed, select(., x, y))[, 2],
@@ -109,6 +112,9 @@ d <-
     doy = yday(date))
 
 saveRDS(d, 'Data/ndvi-data.rds')
+
+# check dataset size relative to max data frame size
+nrow(d) / .Machine$integer.max
 
 # for testing
 library('ggplot2')
