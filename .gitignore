@@ -27,3 +27,6 @@ Data/water-shapefiles/water-shapefiles.qgz
 Data/water-shapefiles/World_Linear_Water.lpk
 Data/water-shapefiles/World_Water_Bodies.lpk
 Data/ndvi-data.rds
+Data_annotated/ndvi-data-with-fitted-and-e.rds
+Models/canada-mean-ndvi-aggr-2-2025-07-08-gaussian.rds
+Models/canada-mean-ndvi-aggr-2-2025-07-10-beta.rds
