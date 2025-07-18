@@ -26,9 +26,11 @@ theme_set(
           legend.position = 'inside',
           legend.position.inside = c(0.25, 0.9)))
 
+canada_albers <- 'ESRI:102001'
 prov <- canadianmaps::PROV %>%
   st_geometry() %>%
-  st_as_sf()
+  st_as_sf() %>%
+  st_transform(canada_albers)
 
 mu_r <- rast('Outputs/mean_predNDVI_raster.nc')
 s2_r <- rast('Outputs/var_residuals_raster.nc')
