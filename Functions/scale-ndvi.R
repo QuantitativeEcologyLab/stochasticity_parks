@@ -1,34 +1,19 @@
-# constant to move values away from boundaries
-ndvi_to_01 <- function(ndvi, avoid_boundaries = FALSE) {
-  ndvi_scaled <- (ndvi + 1) / 2
-  
-  if(avoid_boundaries) {
-    EPS <- .Machine$double.eps * 100
-    
-    ndvi_scaled <- dplyr::if_else(condition = ndvi_scaled - EPS <= 0,
-                                  true = EPS,
-                                  false = ndvi_scaled)
-    ndvi_scaled <- dplyr::if_else(condition = ndvi_scaled + EPS >= 1,
-                                  true = ndvi_scaled - EPS,
-                                  false = ndvi_scaled)
-  }
+# -0.1 is the default lower boundary bc it's the lowest value in the data
+ndvi_to_01 <- function(ndvi, lower = -0.1, upper = 1) {
+  ndvi_scaled <- (ndvi - lower) / (upper - lower)
   
   return(ndvi_scaled)
 }
 
-ndvi_to_11 <- function(ndvi_scaled, avoided_boundaries = FALSE) {
-  if(avoided_boundaries) {
-    EPS <- .Machine$double.eps * 100
-    
-    ndvi_scaled <- dplyr::if_else(condition = ndvi_scaled == EPS,
-                                  true = 0, # = ndvi_scaled - EPS,
-                                  false = ndvi_scaled)
-    ndvi_scaled <- dplyr::if_else(condition = ndvi_scaled == 1 - EPS,
-                                  true = 1, # ndvi_scaled + EPS,
-                                  false = ndvi_scaled)
-  }
-  
-  ndvi <- ndvi_scaled * 2 - 1
+ndvi_to_11 <- function(ndvi_scaled, lower = -0.1, upper = 1) {
+  ndvi <- ndvi_scaled * (upper - lower) + lower
   
   return(ndvi)
+}
+
+if(FALSE) {
+  # test the functions
+  ndvi_to_01(c(-0.1, 0, 1))
+  ndvi_to_11(c(0, 1))
+  ndvi_to_11(ndvi_to_01(c(-0.1, 0, 1)))
 }
