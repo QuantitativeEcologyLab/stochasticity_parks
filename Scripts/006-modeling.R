@@ -230,7 +230,7 @@ if(file.exists('Data_annotated/summarized-spatial-stats.rds')) {
       mu_hat = predict.bam(m_beta, newdata = ., type = 'response',
                            se.fit = FALSE, discrete = FALSE,
                            exclude = EXCLUDE) %>%
-                           ndvi_to_11(),
+        ndvi_to_11(),
       cv_hat = sqrt(s2_hat) / mu_hat) %>% # for fig 4
     as_tibble()
   saveRDS(est, 'Data_annotated/summarized-spatial-stats.rds')
@@ -258,6 +258,8 @@ if(file.exists('Data_annotated/summarized-spatial-stats-albers.rds')) {
     `crs<-`('EPSG:4326') %>%
     project(canada_albers)
   
+  est_albers$pa <- ifel(est_albers$pa < 0.5, 0, 1) # keep as 0 and 1 only
+  
   # rasters of unmodeled mean, mean, variance, mean residuals, and CV
   plot(est_albers)
   
@@ -279,6 +281,7 @@ if(file.exists('Data_annotated/summarized-spatial-stats-albers.rds')) {
                                .default = ecozone))
   mean(is.na(est_albers$ecozone)) # some NAs
   
+  est_albers <- filter(est_albers, ! is.na(ecozone))
   saveRDS(est_albers, 'Data_annotated/summarized-spatial-stats-albers.rds')
 }
 
@@ -311,8 +314,8 @@ cowplot::plot_grid(
 
 # additional statistics ----------------------------------------------------
 # mean NDVI and CIs: -0.00400; (-0.00405, -0.00394)
-# from the summary:    Intercept + critical value     * standard error
-m_beta$family$linkinv(-2.3473613 + c(0, -1, 1) * 1.96 * 0.0003099) %>%
+# from summary:   Intercept + critical value     * standard error
+brms:::inv_logit(-2.3473613 + c(0, -1, 1) * 1.96 * 0.0003099) %>%
   ndvi_to_11() %>%
   round(5)
 
