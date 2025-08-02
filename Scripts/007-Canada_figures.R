@@ -4,8 +4,6 @@ library('lubridate') #for decimal_date function
 library('mgcv') #for predict.gam
 library('sf') #for importing ecozone data
 library('terra') #for basemaps
-#library('basemaps') #for figure basemaps
-#library('tidyterra')
 library('ggspatial')
 library('dplyr') # for data wrangling
 library('khroma') # for color palettes
@@ -25,17 +23,16 @@ canada <- rgeoboundaries::geoboundaries("Canada") %>%
 
 #ecozones
 ecozones <-
-  st_read("Data/ecodistricts/Canada_Ecodistricts.shp", quiet = TRUE) %>%
+  read_sf("Data/ecodistricts/Canada_Ecodistricts.shp") %>%
   st_transform(canada_albers) %>%
-  group_by(zone_name) %>%
-  summarize(geometry = st_union(geometry))
+  summarize(geometry = st_union(geometry), .by = zone_name)
 plot(ecozones)
 
 #protected areas
 pas <-
-  st_read('Data/protected-areas/BDCAPC_CPCAD_2024.shp', quiet = TRUE) %>%
-  st_transform(canada_albers) %>%
+  read_sf('Data/protected-areas/BDCAPC_CPCAD_2024.shp') %>%
   filter(BIOME != 'Marin | Marine') %>%
+  st_transform(canada_albers) %>%
   st_geometry() %>%
   st_as_sf()
 plot(pas)
@@ -45,149 +42,10 @@ r_pas <- rast('Data/protected-areas/protected-areas-0-1.tif') %>%
   project(canada_albers, method = 'mode')
 plot(r_pas)
 
-# add predicted values and residuals for each observation to dataset
-#' ******************UPDATE******************************************
-if(file.exists(d_sum, 'Data_annotated/ndvi-data-spatial-stats.rds')){
-  d_sum <- readRDS('Data_annotated/ndvi-data-spatial-stats.rds')
-} else {
-  m_beta <- readRDS('Models/canada-mean-ndvi-aggr-2-2025-07-18-beta.rds')
-  
-  d <- readRDS("Data_annotated/ndvi-data-with-fitted-and-e.rds")
-  
-  d_sum <- d %>%
-    summarize(mean_NDVI = mean(NDVI, na.rm = TRUE),
-              var_NDVI = var(NDVI, na.rm = TRUE),
-              mu_hat = mean(mu_hat, na.rm = TRUE),
-              mean_e = mean(e, na.rm = TRUE),
-              var_e = var(e, na.rm = TRUE),
-              .by = c(x, y)) %>%
-    rast() %>%
-    `crs<-`('EPSG:4326') %>%
-    project(canada_albers) %>%
-    mask(canada) %>%
-    as.data.frame(xy = TRUE) %>%
-    as_tibble() %>%
-    mutate(prop = extract(project(rast('Data/proportion-water.tif'),
-                                  canada_albers),
-                          select(., x, y))[, 2],
-           elev_m = extract(project(rast('Data/elevation.tif'),
-                                    canada_albers),
-                            select(., x, y))[, 2],
-           pa = extract(project(r_pas, canada_albers),
-                        select(., x, y))[, 2]) %>%
-    filter(! is.na(elev_m)) %>%
-    mutate(ecozone = extract(rasterize(ecozones, r_pas,
-                                       field = 'zone_name'),
-                             select(., x, y))[, 2],
-           ecozone = case_when(ecozone == 'Boreal PLain' ~ 'Boreal Plain',
-                               ecozone == 'MixedWood Plain' ~ 'Mixedwood Plain',
-                               .default = ecozone))
-  
-  saveRDS(d_sum, 'Data_annotated/ndvi-data-spatial-stats.rds')
-  
-  # test
-  ggplot(d_sum) +
-    coord_sf(crs = canada_albers) +
-    geom_raster(aes(x, y, fill = mean_NDVI)) +
-    scale_fill_gradientn('Mean NDVI', colours = NDVI_cols)
-}
-
-#some data wrangling -------------------------------------------------------------
-#calculate mean +  variance spatially 
-# 
-# VAR <- r %>%
-#   group_by(x, y, park) %>%
-#   summarize(mean = mean(preds),
-#             var = var(res),
-#             mean_res = mean(res),
-#             cv = cv(preds, aszero = T),
-#             cv.2 = sd(preds)/mean(preds),
-#             mean.2 = mean(NDVI)) %>%
-#   mutate(median_ndvi = median(NDVI), .by = ecozone) %>%
-#   arrange(desc(median_ndvi)) %>%
-#   mutate(ecozone = factor(ecozone, levels = unique(ecozone)))
-# 
-# VAR <- readRDS('Data_annotated/summarized-spatial-stats-albers.rds') %>%
-#   mutate(pa = extract(r_pas, select(., x, y))[, 2],
-#          ecozone = extract(rasterize(ecozones, r_spat_stats,
-#                                      field = 'zone_name'),
-#                            select(., x, y))[, 2])
-# 
-#create rasters for this object to plot easier 
-# r_spat_stats <- select(VAR, - c(pa, ecozone)) %>%
-#   rast() %>%
-#   `crs<-`('EPSG:4326') %>%
-#   project(canada_albers)
-# plot(r_spat_stats)
-# 
-# mean.rast <- rast$mean
-# terra::writeCDF(mean.rast, 'Canada/mean_predNDVI_raster.nc', overwrite = TRUE)
-# 
-# var.rast <- rast$var
-# terra::writeCDF(var.rast, 'Canada/var_residuals_raster.nc', overwrite = TRUE)
-# 
-# meanres.rast <- rast$mean_res
-# terra::writeCDF(meanres.rast, 'Canada/mean_residuals_raster.nc', overwrite = TRUE)
-# 
-# cv.rast <- rast$cv
-# terra::writeCDF(cv.rast, 'Canada/coeff_variation_raster.nc', overwrite = TRUE)
-# 
-# meanNDVI.rast <- rast$mean.2
-# terra::writeCDF(meanNDVI.rast, 'Canada/mean_rawNDVI_raster.nc', overwrite = TRUE)
-# 
-# RES <- r %>%
-#   group_by(year, doy) %>%
-#   summarize(mean = mean(res))
-# 
-# saveRDS(RES, "Canada/results/RES.rds")
-# 
-# ELEV <- r %>%
-#   group_by(elevation) %>%
-#   summarize(mean = mean(res))
-# 
-# saveRDS(ELEV, "Canada/results/ELEV.rds")
-# 
-# MEAN.DOY <- r %>%
-#   group_by(doy, park) %>%
-#   summarize(mean = mean(preds))
-# 
-# saveRDS(MEAN.DOY, "Canada/results/MEAN.DOY.rds")
-# 
-# MEAN.YEAR <- r %>%
-#   group_by(year, park) %>%
-#   summarize(mean = mean(preds))
-# 
-# saveRDS(MEAN.YEAR, "Canada/results/MEAN.YEAR.rds")
-# 
-# VAR.DOY <- r %>%
-#   group_by(doy, park) %>%
-#   summarize(var = var(res))
-# 
-# saveRDS(VAR.DOY, "Canada/results/VAR.DOY.rds")
-# 
-# VAR.YEAR <- r %>%
-#   group_by(year, park) %>%
-#   summarize(var = var(res))
-# 
-# saveRDS(VAR.YEAR, "Canada/results/VAR.YEAR.rds")
-# 
-# CV.YEAR <- r %>%
-#   group_by(year, park) %>%
-#   summarize(cv = cv(preds, aszero = T))
-# 
-# saveRDS(CV.YEAR, "Canada/results/CV.YEAR.rds")
-# 
-# CV.DOY <- r %>%
-#   group_by(doy, park) %>%
-#   summarize(cv = cv(preds, aszero = T))
-# 
-# saveRDS(CV.DOY, "Canada/results/CV.DOY.rds")
-# 
-# ECOZ <- r %>%
-#   group_by(ecozone) %>%
-#   summarize(mean = mean(NDVI),
-#             var = var(preds),
-#             cv = cv(preds, aszero = T))
+# import model, data with residuals, and projected spatial summary
+m_beta <- readRDS('Models/canada-mean-ndvi-aggr-2-2025-07-31-beta.rds')
+d <- readRDS('Data_annotated/ndvi-data-with-fitted-and-e.rds')
+est_albers <- readRDS('Data_annotated/summarized-spatial-stats-albers.rds')
 
 #plot data (figure 1) -----------------------------------------------------
 p_obs_mean <-
