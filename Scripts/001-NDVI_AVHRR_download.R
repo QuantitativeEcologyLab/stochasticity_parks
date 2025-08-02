@@ -11,6 +11,9 @@ plan(multisession, workers = ncores)
 url_main <- 'https://www.ncei.noaa.gov/data/land-normalized-difference-vegetation-index/access/'
 years <- 1981:2025 #' years to download; *downloading up to 2025-05-07*
 
+#' *NOTE:* The data downloaded is version 5.
+#'         Rekha was unable to find a download link for V6 when she was working on the project
+
 # find file names for each raster
 fn_tib <- tibble(
   years = years,
