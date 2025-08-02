@@ -16,13 +16,13 @@ prov <- st_transform(canadianmaps::PROV, CRS) %>%
   st_geometry() %>%
   st_as_sf()
 
+# protected areas ----
 # shapefile of protected areas
 pas <- read_sf('Data/protected-areas/BDCAPC_CPCAD_2024.shp') %>%
   st_transform(CRS)
 
 table(pas$BIOME, useNA = 'always')
 table(pas$TYPE_E, useNA = 'always')
-
 
 ggplot(pas, aes(fill = BIOME)) +
   geom_sf() +
@@ -39,3 +39,18 @@ r_pas <- pas %>%
 plot(r_pas)
 
 writeRaster(r_pas, 'Data/protected-areas/protected-areas-0-1.tif')
+
+# ecoregions ----
+eco <- read_sf("Data/ecodistricts/Canada_Ecodistricts.shp") %>%
+  st_transform(CRS) %>%
+  summarize(geometry = st_union(geometry), .by = zone_name)
+plot(eco['zone_name'])
+
+# convert the shapefile to a raster of TRUE/FALSE
+r_eco <- eco %>%
+  vect() %>%
+  rasterize(y = r_0, field = 'zone_name') %>%
+  crop(prov, mask = TRUE)
+plot(r_eco)
+
+writeRaster(r_eco, 'Data/ecodistricts/ecozones.tif')
