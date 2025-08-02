@@ -13,13 +13,6 @@ source('Functions/scale-ndvi.R') # to scale NDVI to [0, 1] and back
 #import dataset (imports within a few minutes)
 d <- readRDS('Data/ndvi-data.rds')
 
-if(file.exists('Data/ecodistricts/ecozone.tif')) {
-  r_eco <- rast('Data/ecodistricts/ecozone.tif')
-} else {
-  r_eco <- rasterize(ecozones, r_pas, field = 'zone_name')
-  writeRaster(r_eco, 'Data/ecodistricts/ecozone.tif')
-}
-
 # test spatial smooth only (only using first 100 rasters) ----
 if(FALSE) {
   library('spdep')     # to run neighbour analysis
@@ -212,11 +205,8 @@ if(file.exists('Data_annotated/ndvi-data-with-fitted-and-e.rds')) {
   d <- readRDS('Data_annotated/ndvi-data-with-fitted-and-e.rds')
 } else {
   d <- mutate(d,
-              mu_hat = predict(m_beta, newdata = d, type = 'response',
-                               discrete = FALSE, # TRUE gives a pixelized map
-                               newdata.guaranteed = TRUE) %>%
-                ndvi_to_11(), # map to [-1, 1]
-              e = NDVI - mu_hat)
+              backtrasformed_fitted = ndvi_to_11(fitted(m_beta)),
+              e = NDVI - backtrasformed_fitted)
   saveRDS(d, 'Data_annotated/ndvi-data-with-fitted-and-e.rds')
 }
 
@@ -239,12 +229,9 @@ if(file.exists('Data_annotated/summarized-spatial-stats.rds')) {
     mutate(
       mu_hat = predict.bam(m_beta, newdata = ., type = 'response',
                            se.fit = FALSE, discrete = FALSE,
-                           exclude = EXCLUDE),
-      cv_hat = sqrt(s2_hat) / mu_hat, # for fig 4
-      ecozone = extract(r_ecozones, select(., x, y))[, 2],
-      ecozone = case_when(ecozone == 'Boreal PLain' ~ 'Boreal Plain',
-                          ecozone == 'MixedWood Plain' ~ 'Mixedwood Plain',
-                          .default = ecozone)) %>%
+                           exclude = EXCLUDE) %>%
+                           ndvi_to_11(),
+      cv_hat = sqrt(s2_hat) / mu_hat) %>% # for fig 4
     as_tibble()
   saveRDS(est, 'Data_annotated/summarized-spatial-stats.rds')
   
@@ -280,16 +267,27 @@ if(file.exists('Data_annotated/summarized-spatial-stats-albers.rds')) {
   writeRaster(est_albers$s2_hat, 'Canada/mean-squared-residuals.tif')
   writeRaster(est_albers$cv_hat, 'Canada/coefficient-of-variation.tif')
   
+  # add ecozones
+  r_eco <- project(rast('Data/ecodistricts/ecozones.tif'), canada_albers)
+  
   est_albers <- est_albers %>%
     as.data.frame(xy = TRUE) %>%
-    as_tibble()
+    as_tibble() %>%
+    mutate(ecozone = extract(r_eco, select(., x, y))[, 2],
+           ecozone = case_when(ecozone == 'Boreal PLain' ~ 'Boreal Plain',
+                               ecozone == 'MixedWood Plain' ~ 'Mixedwood Plain',
+                               .default = ecozone))
+  mean(is.na(est_albers$ecozone)) # some NAs
+  
   saveRDS(est_albers, 'Data_annotated/summarized-spatial-stats-albers.rds')
 }
 
 # check limits (CVs < 0 should really be tending to Inf)
+layout(1:3)
 hist(est_albers$mu_hat)
 hist(est_albers$s2_hat, breaks = 30)
 hist(est_albers$cv_hat, breaks = 5e4, xlim = c(-5, 5))
+layout(1)
 
 cowplot::plot_grid(
   ggplot() +
@@ -308,7 +306,7 @@ cowplot::plot_grid(
     geom_raster(aes(x, y, fill = cv_hat), est_albers) +
     labs(x = NULL, y = NULL) +
     scale_fill_distiller(expression(widehat(CV(NDVI))), type = 'div',
-                         palette = 5, limits = c(-3, 3)),
+                         palette = 5, limits = c(-5, 5)),
   nrow = 1)
 
 # additional statistics ----------------------------------------------------
@@ -318,7 +316,6 @@ m_beta$family$linkinv(-2.3473613 + c(0, -1, 1) * 1.96 * 0.0003099) %>%
   ndvi_to_11() %>%
   round(5)
 
-#' *continue editing from here*
 #' find average variance and confidence intervals
 #' using `lm()` because the large sample size should be enough to justify
 #' the central limit theorem. using `glm()` or `gam()` results in model
@@ -380,14 +377,6 @@ est_albers %>%
          area_km = proportion * q_area_km2)
 
 # mean and confidence intervals of specific ecozones (Table S1) ----
-r_eco <- rast('Data/ecodistricts/ecozones.tif') %>%
-  project(canada_albers)
-plot(r_eco)
-
-est_albers <- mutate(est_albers,
-                     ecozone = extract(r_eco, tibble(x, y))[, 2])
-mean(is.na(est_albers$ecozone)) # some NAs
-
 options(scipen = 10) # to prevent scientific notation in the table
 
 # create the table of stats for an ecozone
