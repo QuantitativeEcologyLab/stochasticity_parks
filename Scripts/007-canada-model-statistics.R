@@ -99,4 +99,4 @@ ecozone_summary <-
 
 print(ecozone_summary, n = 15 * 3)
 
-readr::write_csv(ecozone_summary, 'Canada/ecozone-summary-statistics.csv')
+readr::write_csv(ecozone_summary, 'Outputs/ecozone-summary-statistics.csv')

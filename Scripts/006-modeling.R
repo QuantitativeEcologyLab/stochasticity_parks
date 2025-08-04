@@ -263,11 +263,11 @@ if(file.exists('Data_annotated/summarized-spatial-stats-albers.rds')) {
   # rasters of unmodeled mean, mean, variance, mean residuals, and CV
   plot(est_albers)
   
-  writeRaster(est_albers$unmodeled_mean, 'Canada/unmodeled-mean.tif')
-  writeRaster(est_albers$mu_hat, 'Canada/estimated-mean.tif')
-  writeRaster(est_albers$mean_e, 'Canada/mean-residuals.tif')
-  writeRaster(est_albers$s2_hat, 'Canada/mean-squared-residuals.tif')
-  writeRaster(est_albers$cv_hat, 'Canada/coefficient-of-variation.tif')
+  writeRaster(est_albers$unmodeled_mean, 'Outputs/unmodeled-mean.tif')
+  writeRaster(est_albers$mu_hat, 'Outputs/estimated-mean.tif')
+  writeRaster(est_albers$mean_e, 'Outputs/mean-residuals.tif')
+  writeRaster(est_albers$s2_hat, 'Outputs/mean-squared-residuals.tif')
+  writeRaster(est_albers$cv_hat, 'Outputs/coefficient-of-variation.tif')
   
   # add ecozones
   r_eco <- project(rast('Data/ecodistricts/ecozones.tif'), canada_albers)
