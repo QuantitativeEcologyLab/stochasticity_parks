@@ -11,6 +11,16 @@ plan(multisession, workers = ncores)
 url_main <- 'https://www.ncei.noaa.gov/data/land-normalized-difference-vegetation-index/access/'
 years <- 1981:2025 #' years to download; *downloading up to 2025-05-07*
 
+# approximate cell resolutions at different latitudes 
+tibble(lat = seq(40, 90, by = 10),
+       long = 0,
+       original_lat_km = 110 * 0.05, # original res is 0.05 * 0.05 degrees
+       original_long_km = 111 * cospi(lat / 180) * 0.05,
+       original_area_km2 = original_lat_km * original_long_km,
+       aggr_lat_km = original_lat_km * 2, # aggregate at a factor of 2 * 2
+       aggr_long_km = original_long_km * 2,
+       aggr_area_km2 = aggr_lat_km * aggr_long_km)
+
 #' *NOTE:* The data downloaded is version 5.
 #'         Rekha was unable to find a download link for V6 when she was working on the project
 
