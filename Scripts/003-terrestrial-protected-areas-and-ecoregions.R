@@ -16,7 +16,18 @@ prov <- st_transform(canadianmaps::PROV, CRS) %>%
   st_geometry() %>%
   st_as_sf()
 
-# protected areas ----
+# shapefile of ecodistricts
+ed <- read_sf('Data/ecodistricts/Canada_Ecodistricts.shp') %>%
+  st_transform(CRS) %>%
+  mutate(id = 1:n()) #' `ECODISTRICT` has non-unique values
+
+r_ed <- ed %>%
+  vect() %>%
+  rasterize(y = r_0, field = 'id') %>%
+  crop(prov, mask = TRUE)
+plot(r_ed)
+writeRaster(r_ed, 'Data/ecodistricts/ecodistrict-id.tif')
+
 # shapefile of protected areas
 pas <- read_sf('Data/protected-areas/BDCAPC_CPCAD_2024.shp') %>%
   st_transform(CRS)
@@ -31,7 +42,7 @@ ggplot(pas, aes(fill = BIOME)) +
 # drop marine PAs
 pas <- filter(pas, BIOME != 'Marin | Marine')
 
-# convert the shapefile to a raster of TRUE/FALSE
+# convert the shapefile to a raster of 0/1
 r_pas <- pas %>%
   vect() %>%
   rasterize(y = r_0, background = 0) %>%
@@ -40,11 +51,9 @@ plot(r_pas)
 
 writeRaster(r_pas, 'Data/protected-areas/protected-areas-0-1.tif')
 
-# ecoregions ----
-eco <- read_sf("Data/ecodistricts/Canada_Ecodistricts.shp") %>%
-  st_transform(CRS) %>%
-  summarize(geometry = st_union(geometry), .by = zone_name)
-plot(eco['zone_name'])
+# ecoregions
+eco <- summarize(ed, geometry = st_union(geometry), .by = zone_name)
+plot(eco)
 
 # convert the shapefile to a raster of TRUE/FALSE
 r_eco <- eco %>%
@@ -52,5 +61,4 @@ r_eco <- eco %>%
   rasterize(y = r_0, field = 'zone_name') %>%
   crop(prov, mask = TRUE)
 plot(r_eco)
-
 writeRaster(r_eco, 'Data/ecodistricts/ecozones.tif')
