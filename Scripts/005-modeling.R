@@ -103,8 +103,8 @@ d %>%
 
 ggsave(filename = 'temp.png', height = 10, width = 10, bg = 'white')
 
-if(file.exists('Models/canada-mean-ndvi-aggr-2-2025-07-20-beta.rds')) {
-  m_beta <- readRDS('Models/canada-mean-ndvi-aggr-2-2025-07-20-beta.rds')
+if(file.exists('Models/canada-mean-ndvi-aggr-2-2025-07-31-beta.rds')) {
+  m_beta <- readRDS('Models/canada-mean-ndvi-aggr-2-2025-07-31-beta.rds')
 } else {
   # model with Gaussian family fits in 45 minutes
   # model with Beta family fits in 2.7 days 
