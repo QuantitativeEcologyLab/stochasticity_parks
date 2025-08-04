@@ -7,6 +7,7 @@ library('terra')      # for raster data (masks tidyr::extract())
 library('ggplot2')    # for fancy plots
 library('cowplot')    # for fancy plots in grids
 library('ggspatial')  # for maps in ggplot2
+library('elevatr')    # for digital elevation models
 
 theme_set(
   theme_classic() +
@@ -27,57 +28,67 @@ theme_set(
           legend.position.inside = c(0.25, 0.9)))
 
 canada_albers <- 'ESRI:102001'
-prov <- canadianmaps::PROV %>%
+canada <- rgeoboundaries::geoboundaries("Canada") %>%
   st_geometry() %>%
   st_as_sf() %>%
   st_transform(canada_albers)
 
-mu_r <- rast('Outputs/mean_predNDVI_raster.nc')
-s2_r <- rast('Outputs/var_residuals_raster.nc')
-cv_r <- rast('Outputs/coeff_variation_raster.nc')
+# rasters of estimated statistics of NDVI
+r_mu <- rast('Outputs/estimated-mean.tif')
+r_s2 <- rast('Outputs/mean-squared-residuals.tif')
+r_cv <- rast('Outputs/coefficient-of-variation.tif')
 
-plot(mu_r)
-plot(prov, add = TRUE)
+plot(r_mu)
+plot(canada, add = TRUE)
 
-dem <- elevatr::get_elev_raster(locations = mu_r, z = 1) %>%
+# download a raster based on the raster of the spatially aggregated data
+r_0 <- list.files('../ndvi-stochasticity/data/avhrr-viirs-ndvi/raster-files',
+                  pattern = '.nc', full.names = TRUE) %>%
+  first() %>%
   rast() %>%
-  crop(prov) %>%
-  mask(prov)
+  terra::aggregate(2)
+
+# using a coarse resolution since it's just a supporting analysis
+dem <- get_elev_raster(r_0, z = 1) %>%
+  rast() %>%
+  crop(., st_transform(canada, crs(.)), mask = TRUE)
+res(dem)
 plot(dem)
-plot(prov, add = TRUE)
+plot(st_transform(canada, crs(dem)), add = TRUE)
 
 #' change the working directory as required by `climatenaR`
 #' this directory should have all the files for climateNA to run
-setwd('climatena')
-writeRaster(dem, 'can-dem-z1.tif')
-plot(rast('can-dem-z1.tif'))
-plot(prov, add = TRUE)
+setwd('ClimateNA_v760')
+writeRaster(dem, 'can-dem.tif')
+plot(rast('can-dem.tif')) # check
+plot(st_transform(canada, 'EPSG:4326'), add = TRUE)
 
-if(! file.exists('can-dem-z1.csv')) {
-  #' convert the can DEM to a csv as required by `climatenaR`
-  demToCSV(file = 'can-dem-z1.tif',
+#' convert the can DEM to a csv as required by `climatenaR`
+if(! file.exists('can-dem.csv')) {
+  demToCSV(file = 'can-dem.tif',
            outdir = '.', # save in current folder
            srs = NULL) # keep NULL if in lat/long
   
   # check the csv
-  read.csv('can-dem-z1.csv', nrows = 5)
+  print(read.csv('can-dem.csv', nrows = 5))
   
-  read.csv('can-dem-z1.csv') %>%
+  read.csv('can-dem.csv') %>%
     ggplot() +
-    geom_raster(aes(-long, lat, fill = el))
+    geom_raster(aes(-long, lat, fill = el)) +
+    coord_sf(crs = 'EPSG:4326')
 }
 
-if(! dir.exists('can-dem-z1')) dir.create('can-dem-z1')
+if(! dir.exists('can-dem')) dir.create('can-dem')
 
-# downloading all possible historical data (2024-09-17)
-map(2022:1901,
+# downloading all possible historical data (2025-08-04)
+map(1981:2024,
     \(y) {
       cat(paste0('Downloading estimated historical data for ', y, '...\n'))
-      histClimateNA(file = 'can-dem-z1.csv',
+      histClimateNA(file = 'can-dem.csv',
                     dateR = as.character(y), # year
                     tFrame = 'M', # monthly averages are the finest scale
-                    exe = 'ClimateNA_v7.42.exe', # must be in wd
-                    outdir = 'can-dem-z1')
+                    exe = 'ClimateNA_v7.60.exe', # must be in wd
+                    outdir = 'can-dem')
     })
 
 # single mean and sd for each pixel to get number of events outside mean +/- 2SE

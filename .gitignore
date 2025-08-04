@@ -4,6 +4,14 @@
 .Ruserdata
 *.db
 
+# climateNA files
+ClimateNA_v760.zip
+/ClimateNA_v760/*
+!/ClimateNA_v760/can-dem.tif
+!/ClimateNA_v760/can-dem
+/ClimateNA_v760/can-dem/*
+/ClimateNA_v760/can-dem/
+
 # data files > 100 MB
 Data/monthly-ecdf-summary.rds
 Data/ndvi-data.rds
