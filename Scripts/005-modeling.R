@@ -143,6 +143,12 @@ if(file.exists('Models/canada-mean-ndvi-aggr-2-2025-07-31-beta.rds')) {
            scheme = c(1, 5, rep(1, 5), 3, 5, 5))
   dev.off()
   
+  png('Figures/gam.check-beta.png', width = 1500, height = 1500)
+  layout(matrix(1:4, ncol = 2))
+  # not interested in the k test
+  gam.check(m_beta, k.sample = 10, k.rep = 1, type = 'pearson')
+  dev.off()
+  
   # check spatial smooth alone
   plot.gam(m_beta, select = 2, rug = FALSE, scale = 0, scheme = 5,
            trans = \(x) {
