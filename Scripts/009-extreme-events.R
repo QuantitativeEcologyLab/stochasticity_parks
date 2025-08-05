@@ -8,6 +8,8 @@ library('ggplot2')    # for fancy plots
 library('cowplot')    # for fancy plots in grids
 library('ggspatial')  # for maps in ggplot2
 library('elevatr')    # for digital elevation models
+library('khroma')     # for color palettes
+library('mgcv')       # for GAMs
 
 theme_set(
   theme_classic() +
@@ -81,7 +83,7 @@ if(! file.exists('can-dem.csv')) {
 if(! dir.exists('can-dem')) dir.create('can-dem')
 
 # downloading all possible historical data (2025-08-04)
-map(1981:2024,
+map(1901:1980,
     \(y) {
       cat(paste0('Downloading estimated historical data for ', y, '...\n'))
       histClimateNA(file = 'can-dem.csv',
@@ -91,77 +93,82 @@ map(1981:2024,
                     outdir = 'can-dem')
     })
 
-# single mean and sd for each pixel to get number of events outside mean +/- 2SE
-setwd('..')
+# estimating extremes using a single mean and sd for each pixel to get
+# the number of events outside mean +/- 1.96 * SE
+setwd('..') # go back to main folder
 COLS <- c('Latitude', 'Longitude', 'Elevation', 'Tave01', 'Tave02',
           'Tave03', 'Tave04', 'Tave05', 'Tave06', 'Tave07', 'Tave08',
           'Tave09', 'Tave10', 'Tave11', 'Tave12')
 
-extremes <-
-  map_dfr(
-    list.files('climatena/can-dem-z1', full.names = TRUE, pattern = 'csv'),
-    \(.f) data.table::fread(.f, na.strings = '-9999', select = c(COLS))) %>%
-  filter(! is.na(Tave01)) %>%
+extremes_longlat <-
+  map(1901:2024, function(.y) {
+    .fn <- paste0('ClimateNA_v760/can-dem/can-dem_', .y, '.csv')
+    data.table::fread(.fn, na.strings = '-9999', select = c(COLS)) %>%
+      mutate(year = .y) %>%
+      return()
+  }, .progress = TRUE) %>%
+  bind_rows() %>%
+  filter(! is.na(Tave01)) %>% # drop rows without temperature data
   pivot_longer(Tave01:Tave12, values_to = 'temp_C', names_to = 'month') %>%
-  group_by(Latitude, Longitude, Elevation, month) %>%
-  summarize(mu = mean(temp_C),
-            sd = sd(temp_C),
-            n_extr = sum(abs((temp_C - mu) / sd) >= qnorm(0.975))) %>%
-  summarize(n_extr = sum(n_extr), .groups = 'drop') %>%
-  mutate(mu = extract(mu_r, data.frame(Longitude, Latitude))[, 2],
-         s2 = extract(s2_r, data.frame(Longitude, Latitude))[, 2],
-         cv = extract(cv_r, data.frame(Longitude, Latitude))[, 2])
+  # get number of months with extreme temperatures for each year
+  # using 1901-1980 as reference years
+  summarize(q_0.025 = if_else(year < 1981, NA_real_, temp_C) %>%
+              quantile(probs = 0.025, na.rm = TRUE),
+            q_0.975 = if_else(year < 1981, NA_real_, temp_C) %>%
+              quantile(probs = 0.975, na.rm = TRUE),
+            n_extr = sum(temp_C < q_0.025 | temp_C > q_0.975),
+            .by = c(Latitude, Longitude, Elevation, month)) %>%
+  summarize(n_extr = sum(n_extr), .by = c(Latitude, Longitude, Elevation))
 
-extremes_rast <- rast(select(extremes, Longitude, Latitude, n_extr)) %>%
+# project to Albers CRS
+extremes_rast <-
+  extremes_longlat %>%
+  select(Longitude, Latitude, n_extr) %>%
+  rast() %>%
   `crs<-`('EPSG:4326') %>%
-  project('ESRI:102001')
+  project(canada_albers) %>%
+  round()
+
 plot(extremes_rast)
-extremes_rast <- as.data.frame(extremes_rast, xy = TRUE)
+plot(canada, add = TRUE)
+
+extremes <-
+  as.data.frame(extremes_rast, xy = TRUE, na.rm = TRUE) %>%
+  mutate(mu = extract(r_mu, data.frame(x, y))[, 2],
+         s2 = extract(r_s2, data.frame(x, y))[, 2]) %>%
+  filter(s2 < quantile(s2, 0.99, na.rm = TRUE))
 
 # get summary statistics
 sum(extremes$n_extr)
-range(extremes$n_extr)
+round(range(extremes$n_extr))
 
 map <-
-  ggplot(extremes_rast) +
+  ggplot(extremes) +
+  geom_sf(data = canada, fill = 'grey', color = 'transparent') +
   geom_raster(aes(x, y, fill = n_extr)) +
-  geom_sf(data = st_transform(prov, 'ESRI:102001'), fill = 'transparent',
-          color = 'black', lwd = 0.5) +
-  khroma::scale_fill_acton(name = 'Number of extreme temperature events',
-                           reverse = TRUE, limits = c(50, 90)) +
+  geom_sf(data = canada, fill = 'transparent', color = 'black', lwd = 0.1) +
+  scale_fill_acton(name = 'Number of extreme-temperature months',
+                   reverse = TRUE) +
   theme_map() +
+  guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
+                               barwidth = 20, barheight = 0.5,
+                               direction = "horizontal")) +
   theme(legend.position = 'top', legend.justification = 'center',
         panel.grid = element_blank(),
-        legend.key.width = rel(2),
         text = element_text(face = 'bold'))
 
-# scatterplots of extreme events by mean, variance, and CV
-scatters <-
-  extremes %>%
-  pivot_longer(c(mu, s2, cv)) %>%
-  filter(! is.na(value)) %>%
-  mutate(name = case_when(name == 'mu' ~ 'Mean NDVI',
-                          name == 's2' ~ 'Variance in NDVI',
-                          name == 'cv' ~ 'Coefficient of variation') %>%
-           factor(., levels = unique(.))) %>%
-  ggplot(aes(value, n_extr)) +
-  facet_wrap(~ name, nrow = 1, scales = 'free_x', strip.position = 'bottom') +
-  geom_jitter(alpha = 0.05, width = 0, height = 0.25, size = 0.1) +
-  geom_smooth(aes(color = name, fill = name),
-              method = 'gam', formula = y ~ s(x, k = 4),
-              method.args = list(family = poisson(), method = 'REML'),
-              show.legend = FALSE) +
-  labs(x = NULL, y = 'Number of extreme\ntemperature events') +
-  scale_color_manual(values = c('forestgreen', 'dodgerblue3', '#93799a'),
-                     aesthetics = c('color', 'fill')) +
-  theme(legend.position = 'top', panel.grid = element_blank(),
-        strip.placement = 'outside', strip.background = element_blank(),
-        strip.text = element_text(size = 11),
-        text = element_text(face = 'bold'))
+# scatterplots of extreme events by mean and variance
+# ndvi can be < 0 and cv can be too large, so cv gives odd relationships
+hexes <-
+  ggplot() +
+  stat_summary_hex(aes(mu, s2, z = n_extr), extremes, na.rm = TRUE,
+                   bins = 75) +
+  scale_fill_acton(reverse = TRUE, limits = range(extremes$n_extr)) +
+  labs(x = 'Mean NDVI', y = 'Variance in NDVI') +
+  theme(legend.position = 'none', text = element_text(face = 'bold'))
 
 # plot the two together
-plot_grid(map, scatters, ncol = 1, rel_heights = c(3, 1),
-          labels = c('a', 'b'))
+fig_s4 <- plot_grid(map, hexes, ncol = 1, labels = c('A', 'B'))
 
-ggsave('Figures/canada-extreme-events.png', width = 8, height = 9,
-       scale = 1.1, dpi = 600, bg = 'white')
+ggsave('Figures/canada-extreme-events.png', fig_s4,
+       width = 6.46, height = 11, dpi = 600, bg = 'white')
