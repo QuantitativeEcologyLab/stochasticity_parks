@@ -170,5 +170,5 @@ hexes <-
 # plot the two together
 fig_s4 <- plot_grid(map, hexes, ncol = 1, labels = c('A', 'B'))
 
-ggsave('Figures/canada-extreme-events.png', fig_s4,
+ggsave('Figures/figure-s4-canada-extreme-events.png', fig_s4,
        width = 6.46, height = 11, dpi = 600, bg = 'white')
