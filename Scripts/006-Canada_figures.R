@@ -444,6 +444,7 @@ ggsave('Figures/figure4.png', p_quantiles, units = "in", bg = "white",
 #spatial mean of residuals
 p_res_canada <-
   ggplot() +
+  geom_sf(data = canada, fill = 'grey', color = "transparent") + 
   geom_raster(aes(x, y, fill = mean_e), est_albers) +
   geom_sf(data = canada, fill = NA, color = "black") + 
   scale_fill_distiller("Mean response residuals", type = 'div',
@@ -456,14 +457,17 @@ p_res_canada <-
                                barwidth = 18, barheight = 0.5,
                                direction = "horizontal"))
 
-#mean of residuals for each area - plots faster than all residuals
-p_res_doy <-
-  ggplot(d, aes(doy, e)) +
-  geom_hex() +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5), color = 'black') +
-  xlab("Day of year") +
-  ylab("Response residuals") +
-  scale_fill_lapaz(name = 'Count', reverse = TRUE, limits = c(0, NA)) + 
+# hex plots of residuals vs other variables (using only a subset)
+if(file.exists('Data_annotated/ndvi-data-with-fitted-and-e-1-percent-subset.rds')) {
+  d_sub <- readRDS('Data_annotated/ndvi-data-with-fitted-and-e-1-percent-subset.rds')
+} else {
+  d_sub <- slice_sample(d, prop = 0.01)
+  saveRDS(d_sub, 'Data_annotated/ndvi-data-with-fitted-and-e-1-percent-subset.rds')
+}
+nrow(d_sub)
+
+p_hex <-
+  ggplot(d_sub) +
   theme_classic() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
@@ -472,93 +476,66 @@ p_res_doy <-
         legend.key.size = unit(0.5, 'cm'),
         legend.spacing.y = unit(0.1, 'cm'),
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = "top")
+        legend.position = "top") +
+  ylab("Response residuals") +
+  scale_fill_lapaz(name = 'Count', reverse = TRUE,
+                   labels = function(x) {
+                     .e <- floor(log10(x))
+                     paste0(round(x / 10^.e), 'e', .e)
+                   }) + 
+  guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
+                               barwidth = 6, barheight = 0.5,
+                               direction = "horizontal"))
+
+p_res_doy <-
+  p_hex +
+  geom_hex(aes(doy, e)) +
+  geom_hline(yintercept = 0, lwd = 0.1) +
+  xlab("Day of year")
 
 p_res_year <-
-  ggplot(d, aes(year, e)) +
-  geom_hex() +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5), color = 'black') +
-  xlab("Year") +
-  ylab("Response residuals") + 
-  scale_fill_lapaz(name = 'Count', reverse = TRUE, limits = c(0, NA)) + 
-  theme_classic() +
-  theme(panel.grid = element_blank(),
-        axis.title = element_text(size = 9, family = "sans", face = "bold"),
-        axis.text = element_text(size = 8, family = "sans"),
-        legend.title = element_text(face = 'bold'),
-        legend.key.size = unit(0.5, 'cm'),
-        legend.spacing.y = unit(0.1, 'cm'),
-        plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = "top")
+  p_hex +
+  geom_hex(aes(year, e)) +
+  geom_hline(yintercept = 0, lwd = 0.1) +
+  geom_vline(xintercept = 2014, lwd = 0.1, lty = 'dashed') +
+  xlab("Year")
 
 p_res_lat <-
-  ggplot(d, aes(y, e)) +
-  geom_hex() +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5), color = 'black') +
-  xlab("Latitude") +
-  ylab("Response residuals") + 
-  scale_fill_lapaz(name = 'Count', reverse = TRUE, limits = c(0, NA)) + 
-  theme_classic() +
-  theme(panel.grid = element_blank(),
-        axis.title = element_text(size = 9, family = "sans", face = "bold"),
-        axis.text = element_text(size = 8, family = "sans"),
-        legend.title = element_text(face = 'bold'),
-        legend.key.size = unit(0.5, 'cm'),
-        legend.spacing.y = unit(0.1, 'cm'),
-        plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = "top")
+  p_hex +
+  geom_hex(aes(y, e)) +
+  geom_hline(yintercept = 0, lwd = 0.1) +
+  xlab("Latitude")
 
 p_res_long <-
-  ggplot(d, aes(x, e)) +
-  geom_hex() +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5), color = 'black') +
-  xlab("Longitude") +
-  ylab("Response residuals") + 
-  scale_fill_lapaz(name = 'Count', reverse = TRUE, limits = c(0, NA)) + 
-  theme_classic() +
-  theme(panel.grid = element_blank(),
-        axis.title = element_text(size = 9, family = "sans", face = "bold"),
-        axis.text = element_text(size = 8, family = "sans"),
-        legend.title = element_text(face = 'bold'),
-        legend.key.size = unit(0.5, 'cm'),
-        legend.spacing.y = unit(0.1, 'cm'),
-        plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = "top")
+  p_hex +
+  geom_hex(aes(x, e)) +
+  geom_hline(yintercept = 0, lwd = 0.1) +
+  xlab("Longitude")
 
 p_res_elev <-
-  ggplot(d, aes(elev_m, e)) +
-  geom_hex() +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5), color = 'black') +
-  xlab("Elevation (m)") +
-  ylab("Response residuals") + 
-  scale_fill_lapaz(name = 'Count', reverse = TRUE, limits = c(0, NA)) + 
-  theme_classic() +
-  theme(panel.grid = element_blank(),
-        axis.title = element_text(size = 9, family = "sans", face = "bold"),
-        axis.text = element_text(size = 8, family = "sans"),
-        legend.title = element_text(face = 'bold'),
-        legend.key.size = unit(0.5, 'cm'),
-        legend.spacing.y = unit(0.1, 'cm'),
-        plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = "top")
+  p_hex +
+  geom_hex(aes(elev_m, e)) +
+  geom_hline(yintercept = 0, lwd = 0.1) +
+  xlab("Elevation (m)")
 
-ggarrange(
-  ggarrange(p_res_canada,
-            ggarrange(p_res_doy, p_res_year, ncol = 2,
-                      labels = c("D", "E")),
-            nrow = 2, labels = c("A", ""), heights = c(1, 0.5)),
-  ggarrange(p_res_lat, p_res_long, p_res_elev, nrow = 3,
-            labels = c("B", "C", "F")),
-  ncol = 2, widths = c(1, 0.5))
+p_s1 <-
+  ggarrange(
+    ggarrange(p_res_canada,
+              ggarrange(p_res_doy, p_res_year, ncol = 2,
+                        labels = c("D", "E")),
+              nrow = 2, labels = c("A", ""), heights = c(1, 0.5)),
+    ggarrange(p_res_lat, p_res_long, p_res_elev, nrow = 3,
+              labels = c("B", "C", "F")),
+    ncol = 2, widths = c(1, 0.5))
 
-ggsave('Figures/residuals.png', units = "in", bg = "white", width = 6.86,
+ggsave('Figures/figure-s1-residuals.png', units = "in", bg = "white", width = 6.86,
        height = 6.86, dpi = 600)
 
 # histogram of model residuals (Fig. S2 in appendix) ----
-p_res_hist <-
-  tibble(res = rnorm(10)) %>%
+p_s2 <-
+  d_sub %>%
   ggplot() +
-  geom_histogram(aes(res), fill = 'grey', color = 'black', binwidth = 0.25,
+  geom_histogram(aes(e), fill = 'grey', color = 'black', binwidth = 0.025,
                  center = 0) +
   xlab("Response Residuals") +
   ylab('Count') +
@@ -569,138 +546,27 @@ p_res_hist <-
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
         axis.text = element_text(size = 8, family = "sans"))
 
-ggsave('Figures/residuals-hist.png', p_res_hist, units = "in",
+ggsave('Figures/figure-s2residuals-hist.png', p_s2, units = "in",
        bg = "white", width = 6.86, height = 4.5, dpi = 600)
 
-#coefficient of variation (currently not in appendix) ---------------------
-
-# #spatial variance trends
-# p_cv_canada <- 
-#   ggplot() +
-#   geom_raster(est_albers, mapping = aes(x, y, fill = cv)) +
-#   geom_sf(data = canada, fill = NA, color = "black") + 
-#   scale_fill_acton(name = 'Coefficient of Variation') +
-#   theme_void() +
-#   theme(panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         axis.title.x=element_blank(),
-#         axis.title.y=element_blank(),
-#         panel.background = element_rect(fill = "transparent", color = NA),
-#         plot.background = element_rect(fill = "transparent", color = NA),
-#         legend.background = element_rect(fill = "transparent", color = NA),
-#         plot.margin = unit(c(0.2, 0.1, 0.4, 0.2), "cm"),
-#         legend.position = "bottom",
-#         legend.title = element_text(face = "bold")) + 
-#   guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA, barwidth = 18,
-#                                barheight = 0.5, title = "Coefficient of Variation",  direction = "horizontal"))
-# 
-# #plot smooths
-# 
-# #separate data by within/outside parks
-# parkycv <- 
-#   ggplot() +
-#   geom_smooth(aes(year, cv, colour = pa), span = 0.25, se = FALSE) +
-#   geom_smooth(aes(year, cv, colour = "Outside Parks"),  span = 0.25, se = FALSE) +
-#   scale_colour_manual(name = "", values = c("#ccb3d1", "#5b3f64")) +
-#   xlab("Year") +
-#   ylab("Coefficient of Variation") +
-#   scale_x_continuous(expand = c(0,0)) +
-#   theme_classic() +
-#   theme(panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         axis.title.y = element_text(size = 9, family = "sans", face = "bold"),
-#         axis.title.x = element_text(size = 9, family = "sans", face = "bold"),
-#         axis.text.y = element_text(size = 8, family = "sans"),
-#         axis.text.x = element_text(size = 8, family = "sans"),
-#         legend.background = element_rect(fill = "transparent"),
-#         legend.key.size = unit(0.5, 'cm'),
-#         legend.spacing.y = unit(0.1, 'cm'),
-#         legend.text = element_text(size = 6, family = "sans", face = "bold"),
-#         panel.background = element_rect(fill = "transparent"),
-#         plot.background = element_rect(fill = "transparent", color = NA),
-#         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-#         legend.position = c(0.25, 0.2))
-# 
-# #residual trends by day of year
-# parkdoycv <- 
-#   ggplot() +
-#   geom_point(doyparkyes, mapping = aes(doy, cv), size = 0.3, color = "#5b3f64") +
-#   geom_point(doyparkno, mapping = aes(doy, cv), size = 0.3, color = "#ccb3d1") +
-#   geom_smooth(doyparkyes, mapping = aes(doy, cv, colour = "Within Parks"), span = 0.15, se = FALSE) +
-#   geom_smooth(doyparkno, mapping = aes(doy, cv, colour = "Outside Parks"),  span = 0.15, se = FALSE) +
-#   scale_colour_manual(name = "", values = c("#ccb3d1", "#5b3f64")) +
-#   xlab("Day of year") +
-#   ylab("Coefficient of Variation") +
-#   scale_x_continuous(expand = c(0,0)) +
-#   theme_classic() +
-#   theme(panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         axis.title.y = element_text(size = 9, family = "sans", face = "bold"),
-#         axis.title.x = element_text(size = 9, family = "sans", face = "bold"),
-#         axis.text.y = element_text(size = 8, family = "sans"),
-#         axis.text.x = element_text(size = 8, family = "sans"),
-#         panel.background = element_rect(fill = "transparent"),
-#         plot.background = element_rect(fill = "transparent", color = NA),
-#         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-#         legend.position = "none")
-# 
-# #plot mean trends by ecozone
-# 
-# #boxplot to plot mean in different ecozones
-# boxcv <- 
-#   ggplot(edata, aes(x = layer, y = cv, fill = park)) +
-#   geom_boxplot(outlier.size = 0.3, lwd = 0.2) +
-#   scale_fill_manual(name = "", labels = c("Outside parks", "Within parks"), values = c("#ccb3d1", "#5b3f64")) +
-#   scale_x_discrete(labels=c("2" = "Northern Arctic", "1" = "Arctic Cordillera", "3" = "Southern Arctic", "9" = "Boreal Plain",
-#                             "6" = "Boreal Shield", "15" = "Hudson Plain", "14" = "Montane Cordillera", "8" = "Mixedwood Plain",
-#                             "13" = "Pacific Maritime", "10" = "Prairies", "11" = "Taiga Cordillera", "4" = "Taiga Plain",
-#                             "5" = "Taiga Shield", "7" = "Atlantic Maritime", "12" = "Boreal Cordillera")) +
-#   xlab("Ecozone") +
-#   ylab("Coefficient of Variation") +
-#   theme_classic() +
-#   theme(panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         axis.title.y = element_text(size = 9, family = "sans", face = "bold"),
-#         axis.title.x = element_text(size = 9, family = "sans", face = "bold"),
-#         axis.text.y = element_text(size = 8, family = "sans"),
-#         axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1, size = 8, family = "sans"),
-#         legend.background = element_rect(fill = "transparent"),
-#         legend.key.size = unit(0.7, 'cm'),
-#         legend.spacing.y = unit(0.1, 'cm'),
-#         legend.text = element_text(size=6, family = "sans", face = "bold"),
-#         panel.background = element_rect(fill = "transparent"),
-#         plot.background = element_rect(fill = "transparent", color = NA),
-#         plot.margin = unit(c(0.2,0.1,0.1,0.2), "cm"), #top, left, bottom, right
-#         legend.position = c(0.1, 0.9))
-# 
-# ggarrange(
-#   ggarrange(
-#     cv, ggarrange(parkycv, parkdoycv, nrow = 2, labels = c("B", "C")),
-#     ncol = 2, labels = c("A", ""), widths = c(0.75, 0.5)),
-#   boxcv, nrow = 2, labels = c("", "D"), heights = c(0.75, 0.5))
-# 
-# ggsave('cv.png', units = "in", width = 6.86, height = 8.52, bg = "white",
-#        dpi = 600)
-
 #correlation between mean and variance (Fig. S3 in appendix) --------------
-
-p_correl <- 
+p_s3 <-
   ggplot(est_albers, aes(x = mu_hat, y = s2_hat)) +
   geom_hex() +
-  geom_smooth(method = 'gam', formula = y ~ s(x, k = 5),
-              method.args = list(family = Gamma('log')), color = 'black') +
-  ylab("Variance in NDVI") +
-  xlab("Mean NDVI") +
   theme_classic() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size=8, family = "sans", face = "bold"),
         axis.text = element_text(size=6, family = "sans"),
         plot.title = element_text(hjust = -0.05, size = 12, family = "sans", face = "bold"),
         legend.position = "top",
-        plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm")) +
-  scale_x_continuous(expand = c(0.01,0)) +
-  scale_y_continuous(expand = c(0.01,0)) +
-  khroma::scale_fill_lapaz(name = 'Count', reverse = TRUE)
+        plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm"),
+        legend.title = element_text(face = "bold")) +
+  scale_x_continuous('Mean NDVI', expand = c(0.01,0)) +
+  scale_y_continuous('Variance in NDVI', expand = c(0.01,0), limits = c(0, 0.1)) +
+  khroma::scale_fill_lapaz(name = 'Count', reverse = TRUE) +
+  guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
+                               barwidth = 6, barheight = 0.5,
+                               direction = "horizontal"))
 
-ggsave("Figures/Mean_Var_Correlation.png", p_correl,
-       width = 6.86, height = 4.5, units = "in", dpi = 600, bg = "white")
+ggsave("Figures/figure-s3mean-variance-correlation.png", p_s3,
+       width = 6.86, height = 6.86, units = "in", dpi = 600, bg = "white")
