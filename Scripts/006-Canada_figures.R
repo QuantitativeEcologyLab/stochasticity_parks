@@ -27,7 +27,6 @@ ecozones <-
   read_sf("Data/ecodistricts/Canada_Ecodistricts.shp") %>%
   st_transform(canada_albers) %>%
   summarize(geometry = st_union(geometry), .by = zone_name)
-plot(ecozones)
 
 #protected areas
 pas <-
@@ -40,10 +39,8 @@ pas <-
 # raster of protected areas
 r_pas <- rast('Data/protected-areas/protected-areas-0-1.tif') %>%
   project(canada_albers, method = 'mode')
-plot(r_pas)
 
-# import model, data with residuals, and projected spatial summary
-m_beta <- readRDS('Models/canada-mean-ndvi-aggr-2-2025-07-31-beta.rds')
+# import data with residuals and projected spatial summary
 d <- readRDS('Data_annotated/ndvi-data-with-fitted-and-e.rds')
 est_albers <- readRDS('Data_annotated/summarized-spatial-stats-albers.rds')
 
@@ -74,13 +71,13 @@ parks.plot <- p_obs_mean +
 
 ecoz.plot <-
   p_obs_mean +
-  geom_sf(data = ecozones, fill = NA, color = "black", lwd = 0.2)
+  geom_sf(data = ecozones, fill = NA, color = "black", lwd = 0.1)
 
 fig_1 <- ggarrange(parks.plot, ecoz.plot, nrow = 1, common.legend = T,
                    labels = "AUTO")
 
-ggsave("Figures/figure1.png", fig_1, units = "in", width = 6.46,
-       height = 3, bg = "white", dpi = 600, scale = 2); beepr::beep(4)
+ggsave("Figures/figure-1.png", fig_1, units = "in", width = 6.46,
+       height = 3, bg = "white", dpi = 600, scale = 2)
 
 #plot mean trends (figure 2) -----------------------------------------------------
 #spatial mean trends
@@ -88,7 +85,7 @@ p_mean_canada <-
   ggplot() +
   geom_sf(data = canada, fill = 'grey', color = 'transparent') + 
   geom_raster(aes(x, y, fill = mu_hat), est_albers) +
-  geom_sf(data = canada, fill = NA, color = "black") + 
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
   scale_fill_gradientn('Mean', colours = NDVI_cols) + 
   theme_void() +
   theme(panel.grid.major = element_blank(),
@@ -114,6 +111,8 @@ if(file.exists('Outputs/smooth-estimates-year.rds') &
   preds_year <- readRDS('Outputs/smooth-estimates-year.rds')
   preds_doy <- readRDS('Outputs/smooth-estimates-doy.rds')
 } else {
+  m_beta <- readRDS('Models/canada-mean-ndvi-aggr-2-2025-07-31-beta.rds')
+  
   preds_year <-
     expand.grid(year = seq(1981, 2025, length.out = 500), pa = 0:1,
                 doy = 0, x = 0, y = 0, prop_water = 0, elev_m = 0) %>%
@@ -124,7 +123,8 @@ if(file.exists('Outputs/smooth-estimates-year.rds') &
                 transmute(mu_hat = fit,
                           lwr_95 = fit - 1.96 * se.fit,
                           upr_95 = fit + 1.96 * se.fit) %>%
-                mutate(across(everything(), m_beta$family$linkinv))) %>%
+                mutate(across(everything(), m_beta$family$linkinv),
+                       across(everything(), ndvi_to_11))) %>%
     mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
              factor())
   saveRDS(preds_year, 'Outputs/smooth-estimates-year.rds')
@@ -139,10 +139,13 @@ if(file.exists('Outputs/smooth-estimates-year.rds') &
                 transmute(mu_hat = fit,
                           lwr_95 = fit - 1.96 * se.fit,
                           upr_95 = fit + 1.96 * se.fit) %>%
-                mutate(across(everything(), m_beta$family$linkinv))) %>%
+                mutate(across(everything(), m_beta$family$linkinv),
+                       across(everything(), ndvi_to_11))) %>%
     mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
              factor())
   saveRDS(preds_doy, 'Outputs/smooth-estimates-doy.rds')
+  rm(m_beta)
+  gc()
 }
 
 parkymean <-
@@ -216,20 +219,21 @@ fig_2 <-
             widths = c(0.75, 0.5)) %>%
   ggarrange(boxmean, nrow = 2, labels = c("", "D"), heights = c(0.75, 0.5))
 
-ggsave('Figures/figure2.png', fig_2, units = "in", width = 6.86,
+ggsave('Figures/figure-2.png', fig_2, units = "in", width = 6.86,
        height = 8.52, bg = "white", dpi = 600)
 
 #plot variance trends (figure 3) -------------------------------------------------
 #spatial variance trends
-#' **HERE**
 hist(est_albers$s2_hat)
+mean(est_albers$s2_hat > 0.05) # about 0.2% of data has variance > 0.05
 
 p_var_canada <-
   est_albers %>%
+  mutate(s2_hat = if_else(s2_hat > 0.05, 0.05, s2_hat)) %>%
   ggplot() +
-  geom_sf(data = canada, fill = 'grey', color = "black") +
+  geom_sf(data = canada, fill = 'grey') +
   geom_raster(aes(x, y, fill = s2_hat)) +
-  geom_sf(data = canada, fill = 'transparent', color = "black") +
+  geom_sf(data = canada, fill = 'transparent', color = "black", lwd = 0.2) +
   scale_fill_devon(name = 'Variance in NDVI', limits = c(0, NA),
                    reverse = TRUE) +
   coord_sf(datum = canada_albers) +
@@ -239,20 +243,38 @@ p_var_canada <-
         legend.position = "bottom",
         legend.title = element_text(face = "bold")) + 
   guides(fill = guide_colorbar(
-    title.position = "top", ticks.colour = NA, barwidth = 18,
+    title.position = "top", ticks.colour = NA, barwidth = 6,
     barheight = 0.5, title = "Variance in NDVI",  direction = "horizontal"))
 
-#separate data by within/outside parks
+# calculate variance (i.e., mean squared residuals) over the years and doy
+# while differentiating between outside and inside PAs
+if(all(file.exists(c('Outputs/variance-estimates-year.rds',
+                     'Outputs/variance-estimates-doy.rds')))) {
+  s2_year <- readRDS('Outputs/variance-estimates-year.rds')
+  s2_doy <- readRDS('Outputs/variance-estimates-doy.rds')
+} else {
+  s2_year <- d %>%
+    summarize(s2 = mean(e^2, na.rm = TRUE), .by = c(pa, year, x, y)) %>%
+    summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, year)) %>%
+    mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
+             factor())
+  
+  s2_doy <- d %>%
+    summarize(s2 = mean(e^2, na.rm = TRUE), .by = c(pa, doy, x, y)) %>%
+    summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, doy)) %>%
+    mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
+             factor())
+  
+  saveRDS(s2_year, 'Outputs/variance-estimates-year.rds')
+  saveRDS(s2_doy, 'Outputs/variance-estimates-doy.rds')
+}
+
+# figure 3B
 parkyvar <-
-  d %>%
-  summarize(s2 = mean(e^2, na.rm = TRUE), .by = c(pa, year, x, y)) %>%
-  summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, year)) %>%
-  mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
-           factor()) %>%
-  ggplot() +
-  geom_hline(yintercept = INT_S2, color = 'grey', lty = 'dashed') +
-  geom_point(aes(year, s2, color = pa)) +
-  geom_smooth(aes(year, s2, colour = pa, fill = pa), method = 'gam') +
+  ggplot(s2_year) +
+  geom_point(aes(year, s2, color = pa), size = 0.1) +
+  geom_smooth(aes(year, s2, colour = pa, fill = pa), method = 'gam',
+              formula = y ~ s(x, k = 10), lwd = 0.5) +
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
   xlab("Year") +
@@ -269,22 +291,16 @@ parkyvar <-
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
         legend.position = 'inside', legend.position.inside = c(0.25, 0.9))
 
-#residual trends by day of year
-parkdoyvar <- 
-  d %>%
-  summarize(s2 = mean(e^2, na.rm = TRUE), .by = c(pa, doy, x, y)) %>%
-  summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, doy)) %>%
-  mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
-           factor()) %>%
-  ggplot() +
-  geom_hline(yintercept = INT_S2, color = 'grey', lty = 'dashed') +
-  geom_point(aes(doy, s2, color = pa)) +
-  geom_smooth(aes(doy, s2, colour = pa, fill = pa), method = 'gam') +
+# figure 3C: residual trends by day of year
+parkdoyvar <-
+  ggplot(s2_doy) +
+  geom_point(aes(doy, s2, color = pa), size = 0.1) +
+  geom_smooth(aes(doy, s2, colour = pa, fill = pa), method = 'gam',
+              formula = y ~ s(x, k = 10), lwd = 0.5) +
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
   xlab("Day of year") +
   ylab("Variance in NDVI") +
-  scale_x_continuous(expand = c(0,0)) +
   theme_classic() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
@@ -292,9 +308,7 @@ parkdoyvar <-
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
         legend.position = "none")
 
-#plot mean trends by ecozone
-
-#boxplot to plot variance in different ecozones
+# figure 3D: boxplots of variance in different ecozones
 boxvar <-
   est_albers %>%
   filter(! is.na(ecozone)) %>%
@@ -304,7 +318,6 @@ boxvar <-
          pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
            factor()) %>%
   ggplot(aes(s2_hat, ecozone, group = paste(ecozone, pa), fill = pa)) +
-  geom_vline(xintercept = INT_S2, color = 'grey', lty = 'dashed') +
   geom_boxplot(outlier.size = 0.1, lwd = 0.2, outlier.alpha = 0.1) +
   scale_fill_manual(name = "", labels = c("Outside PAs", "Within PAs"),
                     values=c("lightskyblue2", "dodgerblue3")) +
@@ -327,117 +340,103 @@ fig_3 <-
             widths = c(0.75, 0.5)) %>%
   ggarrange(boxvar, nrow = 2, labels = c("", "D"), heights = c(0.75, 0.5))
 
-ggsave('Figures/figure3.png', fig_3, units = "in", width = 6.86,
+ggsave('Figures/figure-3.png', fig_3, units = "in", width = 6.86,
        height = 8.52, bg = "white", dpi = 600)
 
+# check years with oddly high variance
+filter(s2_year, s2 > 0.02)
+
 #plot quantiles (figure 4) ---------------------------------------------------------
-#' *NOTE: using absolute CV to avoid issues with NDVI < 0 and negative CV*
-#' *not sure if this is the best choice*
+#' *NOTE: converting negative CV to Inf since CV --> Inf as NDVI --> 0*
 plot(seq(-0.1, 1, by = 1e-3), 0.01 / seq(-0.1, 1, by = 1e-3), type = 'l',
      col = 'red', lwd = 5, xlab = 'Mean NDVI', ylab = 'CV of NDVI')
-plot(seq(-0.1, 1, by = 1e-3), 0.01 / ((seq(-0.1, 1, by = 1e-3) + 0.1) / 1.1),
-     type = 'l', col = 'red', lwd = 5, xlab = 'Mean NDVI',
-     ylab = 'CV of transformed NDVI')
+
+# add a column of species richness
+est_albers <- mutate(est_albers,
+                     rich = extract(rast('Data/species_richness.tif'),
+                                    tibble(x, y))[, 2])
 
 #calculate top and bottom 30th percentiles
 cutoffs <- est_albers %>%
-  mutate(cv = if_else(mu_hat < 0, Inf, cv)) %>%
+  mutate(cv_hat = if_else(cv_hat < 0, Inf, cv_hat)) %>%
   summarize(top_mean = quantile(mu_hat, probs = 0.7),
-            bottom_var = quantile(s2_hat, probs = 0.3, na.rm = TRUE),
-            bottom_cv = quantile(abs(cv), probs = 0.3))
+            bottom_var = quantile(s2_hat, probs = 0.3),
+            bottom_cv = quantile(cv_hat, probs = 0.3),
+            top_rich = quantile(rich, probs = 0.7, na.rm = TRUE))
 
 # identify areas in each quantile group
 areas <-
   est_albers %>%
   transmute(x, y,
-            top_mean = mu_hat >= cutoffs$top_mean,
-            bottom_var = s2_hat <= cutoffs$bottom_var,
-            bottom_abs_cv = abs(cv) <= cutoffs$bottom_cv)
+            top_mean = if_else(mu_hat >= cutoffs$top_mean, mu_hat, NA_real_),
+            bottom_var = if_else(s2_hat <= cutoffs$bottom_var, s2_hat, NA_real_),
+            bottom_cv = if_else(cv_hat <= cutoffs$bottom_cv, cv_hat, NA_real_),
+            top_rich = if_else(rich >= cutoffs$top_rich, rich, NA_real_))
 
 # save quantiles as rasters for ease of access
 r_areas <- rast(areas)
 plot(r_areas)
 
-plot(r_areas$top_mean + r_areas$bottom_abs_cv)
+mask(as.numeric(! is.na(r_areas$top_mean)) +
+       as.numeric(! is.na(r_areas$bottom_cv)),
+     canada) %>%
+  plot()
 
-# writeRaster(r_areas$top_mean, 'Canada/top-30-percent-mean-ndvi.tif')
-# writeRaster(r_areas$bottom_var, 'Canada/bottom-30-percent-variance.tif')
-# writeRaster(r_areas$bottom_abs_cv, 'Canada/bottom-30-percent-cv.tif')
+writeRaster(r_areas$top_mean, 'Outputs/top-30-percent-mean-ndvi.tif')
+writeRaster(r_areas$bottom_var, 'Outputs/bottom-30-percent-variance-ndvi.tif')
+writeRaster(r_areas$bottom_cv, 'Outputs/bottom-30-percent-cv-ndvi.tif')
 
-mean.quant <-
+# make figure 4
+theme_4 <-
   ggplot() +
-  geom_sf(data = canada, color = "black", fill = 'grey50') + 
-  geom_raster(aes(x, y, fill = mu_hat),
-              filter(est_albers, mu_hat >= cutoffs$top_mean)) +
-  geom_sf(data = canada, color = "black", fill = NA) + 
-  scale_fill_gradientn(name = 'Mean NDVI', colours = NDVI_cols,
-                       limits = range(est_albers$mu_hat)) + 
   theme_void() +
-  theme(panel.grid = element_blank(),
-        axis.title = element_blank(),
-        legend.position = c(0.1, 0.95),
+  theme(legend.position = 'inside',
+        legend.position.inside = c(0.1, 0.95),
         legend.justification = 'left',
         legend.title = element_text(face = "bold"),
         legend.key.size = unit(0.4, 'cm'),
         legend.text = element_text(size=7, family = "sans", face = "bold"),
-        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) #top, right, bottom, left 
+        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) +
+  guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
+                               barwidth = 6, barheight = 0.5,
+                               direction = "horizontal"))
+mean.quant <-
+  theme_4 +
+  geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
+  geom_raster(aes(x, y, fill = top_mean), areas) +
+  geom_sf(data = canada, color = "black", fill = NA, lwd = 0.2) + 
+  scale_fill_gradientn(name = 'Mean NDVI', colours = NDVI_cols,
+                       limits = range(est_albers$mu_hat))
 
 var.quant <-
-  ggplot() +
-  geom_sf(data = canada, color = "black", fill = 'grey50') + 
-  geom_raster(aes(x, y, fill = s2_hat),
-              filter(est_albers, s2_hat <= cutoffs$bottom_var)) +
-  geom_sf(data = canada, fill = NA, color = "black") + 
+  theme_4 +
+  geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
+  geom_raster(aes(x, y, fill = bottom_var), areas) +
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
   scale_fill_devon(name = 'Variance in NDVI', reverse = TRUE,
-                   limits = c(0, max(est_albers$s2_hat))) + 
-  theme_void() +
-  theme(legend.position = c(0.1, 0.95),
-        legend.justification = 'left',
-        legend.title = element_text(face = "bold"),
-        legend.key.size = unit(0.4, 'cm'),
-        legend.text = element_text(size=7, family = "sans", face = "bold"),
-        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) #top, right, bottom, left 
+                   limits = c(0, 0.05))
 
 cv.quant <-
-  est_albers %>%
-  mutate(cv = if_else(mu_hat < 0, Inf, cv)) %>%
-  filter(cv <= cutoffs$bottom_cv) %>%
-  ggplot() +
-  geom_sf(data = canada, color = "black", fill = 'grey50') + 
-  geom_raster(aes(x, y, fill = cv)) +
-  geom_sf(data = canada, fill = NA, color = "black") + 
-  scale_fill_acton(name = 'Absolute CV in NDVI', reverse = TRUE,
-                   limits = c(0, max(abs(est_albers$cv)))) +
-  theme_void() +
-  theme(legend.position = c(0.1, 0.95),
-        legend.justification = 'left',
-        legend.title = element_text(face = "bold"),
-        legend.key.size = unit(0.4, 'cm'),
-        legend.text = element_text(size=7, family = "sans", face = "bold"),
-        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) #top, right, bottom, left 
+  theme_4 +
+  geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
+  geom_raster(aes(x, y, fill = bottom_cv), areas) +
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
+  scale_fill_acton(name = 'CV in NDVI', reverse = TRUE,
+                   limits = c(0, NA))
 
 p_spp_richness <-
-  ggplot() +
-  geom_sf(data = canada, color = "black", fill = 'grey50') + 
-  geom_raster(aes(x, y, fill = rich),
-              mutate(est_albers, rich = rpois(n(), 10)) %>%
-                filter(rich >= quantile(rich, 0.7))) +
-  geom_sf(data = canada, fill = NA, color = "black") +
+  theme_4 +
+  geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
+  geom_raster(aes(x, y, fill = top_rich), areas) +
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
   scale_fill_batlow(name = 'Species richness', reverse = TRUE,
-                    limits = c(0, NA)) +
-  theme_void() +
-  theme(legend.position = c(0.1, 0.95),
-        legend.justification = 'left',
-        legend.title = element_text(face = "bold"),
-        legend.key.size = unit(0.4, 'cm'),
-        legend.text = element_text(size=7, family = "sans", face = "bold"),
-        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) #top, right, bottom, left 
+                    limits = c(0, NA))
 
-p_quantiles <- ggarrange(mean.quant, var.quant, cv.quant, p_spp_richness,
-                         nrow = 2, ncol = 2, labels = "AUTO")
+fig_4 <- ggarrange(mean.quant, var.quant, cv.quant, p_spp_richness,
+                   nrow = 2, ncol = 2, labels = "AUTO")
 
-ggsave('Figures/figure4.png', p_quantiles, units = "in", bg = "white",
-       width = 8.5, height = 8.5, dpi = 600)
+ggsave('Figures/figure-4.png', fig_4, units = "in", bg = "white",
+       width = 8.5, height = 7, dpi = 600)
 
 #plot model residuals (Fig S1 in appendix) --------------------------------
 
@@ -446,7 +445,7 @@ p_res_canada <-
   ggplot() +
   geom_sf(data = canada, fill = 'grey', color = "transparent") + 
   geom_raster(aes(x, y, fill = mean_e), est_albers) +
-  geom_sf(data = canada, fill = NA, color = "black") + 
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
   scale_fill_distiller("Mean response residuals", type = 'div',
                        palette = 5, limits = c(-0.2, 0.2)) +
   theme_void() +
