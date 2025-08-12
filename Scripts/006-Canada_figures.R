@@ -99,7 +99,7 @@ p_mean_canada <-
         legend.position = "bottom",
         legend.title = element_text(face = "bold")) + 
   guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
-                               barwidth = 20, barheight = 0.5,
+                               barwidth = 15, barheight = 0.5,
                                title = "Mean NDVI",
                                direction = "horizontal"))
 
@@ -234,7 +234,7 @@ p_var_canada <-
   geom_sf(data = canada, fill = 'grey') +
   geom_raster(aes(x, y, fill = s2_hat)) +
   geom_sf(data = canada, fill = 'transparent', color = "black", lwd = 0.2) +
-  scale_fill_devon(name = 'Variance in NDVI', limits = c(0, NA),
+  scale_fill_devon(name = 'Variance in NDVI residuals', limits = c(0, NA),
                    reverse = TRUE) +
   coord_sf(datum = canada_albers) +
   theme_void() +
@@ -243,8 +243,8 @@ p_var_canada <-
         legend.position = "bottom",
         legend.title = element_text(face = "bold")) + 
   guides(fill = guide_colorbar(
-    title.position = "top", ticks.colour = NA, barwidth = 6,
-    barheight = 0.5, title = "Variance in NDVI",  direction = "horizontal"))
+    title.position = "top", ticks.colour = NA,
+    barwidth = 15, barheight = 0.5, direction = "horizontal"))
 
 # calculate variance (i.e., mean squared residuals) over the years and doy
 # while differentiating between outside and inside PAs
@@ -278,7 +278,7 @@ parkyvar <-
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
   xlab("Year") +
-  ylab("Variance in NDVI") +
+  ylab("Variance in NDVI residuals") +
   scale_x_continuous(expand = c(0,0)) +
   theme_classic() +
   theme(panel.grid = element_blank(),
@@ -300,7 +300,7 @@ parkdoyvar <-
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
   xlab("Day of year") +
-  ylab("Variance in NDVI") +
+  ylab("Variance in NDVI residuals") +
   theme_classic() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
@@ -321,7 +321,7 @@ boxvar <-
   geom_boxplot(outlier.size = 0.1, lwd = 0.2, outlier.alpha = 0.1) +
   scale_fill_manual(name = "", labels = c("Outside PAs", "Within PAs"),
                     values=c("lightskyblue2", "dodgerblue3")) +
-  xlab("Variance in response residuals") +
+  xlab("Variance in NDVI residuals") +
   ylab("Ecozone") +
   theme_classic() +
   theme(panel.grid = element_blank(),
