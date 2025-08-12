@@ -37,14 +37,14 @@ canada <- rgeoboundaries::geoboundaries("Canada") %>%
 
 # rasters of estimated statistics of NDVI
 r_mu <- rast('Outputs/estimated-mean.tif')
-r_s2 <- rast('Outputs/mean-squared-residuals.tif')
+r_s2 <- rast('Outputs/estimated-variance.tif')
 r_cv <- rast('Outputs/coefficient-of-variation.tif')
 
 plot(r_mu)
 plot(canada, add = TRUE)
 
 # download a raster based on the raster of the spatially aggregated data
-r_0 <- list.files('../ndvi-stochasticity/data/avhrr-viirs-ndvi/raster-files',
+r_0 <- list.files('Data/ndvi-data/AVHRR-Land_v005',
                   pattern = '.nc', full.names = TRUE) %>%
   first() %>%
   rast() %>%
@@ -128,7 +128,8 @@ if(file.exists('Data/extreme-temperature-months-1981-2024.rds')) {
 
 total_extremes <- sum(extremes_longlat$n_extr)
 total_extremes / (12 * (2024 - 1981) * nrow(read.csv('ClimateNA_v760/can-dem.csv')))
-range(extremes$n_extr) / (12 * (2024 - 1981))
+range(extremes_longlat$n_extr)
+range(extremes_longlat$n_extr) / (12 * (2024 - 1981))
 
 # project to Albers CRS
 extremes_rast <-
@@ -146,11 +147,7 @@ extremes <-
   as.data.frame(extremes_rast, xy = TRUE, na.rm = TRUE) %>%
   mutate(mu = extract(r_mu, data.frame(x, y))[, 2],
          s2 = extract(r_s2, data.frame(x, y))[, 2]) %>%
-  filter(s2 < quantile(s2, 0.99, na.rm = TRUE))
-
-# get summary statistics
-sum(extremes$n_extr)
-round(range(extremes$n_extr))
+  mutate(s2 = if_else(s2 > 0.04, 0.04, s2))
 
 map <-
   ggplot(extremes) +
@@ -174,7 +171,7 @@ hexes <-
   stat_summary_hex(aes(mu, s2, z = n_extr), extremes, na.rm = TRUE,
                    bins = 75) +
   scale_fill_acton(reverse = TRUE, limits = range(extremes$n_extr)) +
-  labs(x = 'Mean NDVI', y = 'Variance in NDVI') +
+  labs(x = 'Mean NDVI', y = 'Variance in NDVI residuals') +
   theme(legend.position = 'none', text = element_text(face = 'bold'))
 
 # plot the two together
