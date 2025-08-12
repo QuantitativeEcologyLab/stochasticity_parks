@@ -225,11 +225,11 @@ ggsave('Figures/figure-2.png', fig_2, units = "in", width = 6.86,
 #plot variance trends (figure 3) -------------------------------------------------
 #spatial variance trends
 hist(est_albers$s2_hat)
-mean(est_albers$s2_hat > 0.05) # about 0.2% of data has variance > 0.05
+mean(est_albers$s2_hat > 0.04) # about 0.2% of data has variance > 0.04
 
 p_var_canada <-
   est_albers %>%
-  mutate(s2_hat = if_else(s2_hat > 0.05, 0.05, s2_hat)) %>%
+  mutate(s2_hat = if_else(s2_hat > 0.04, 0.04, s2_hat)) %>%
   ggplot() +
   geom_sf(data = canada, fill = 'grey') +
   geom_raster(aes(x, y, fill = s2_hat)) +
@@ -254,13 +254,13 @@ if(all(file.exists(c('Outputs/variance-estimates-year.rds',
   s2_doy <- readRDS('Outputs/variance-estimates-doy.rds')
 } else {
   s2_year <- d %>%
-    summarize(s2 = mean(e^2, na.rm = TRUE), .by = c(pa, year, x, y)) %>%
+    summarize(s2 = var(e, na.rm = TRUE), .by = c(pa, year, x, y)) %>%
     summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, year)) %>%
     mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
              factor())
   
   s2_doy <- d %>%
-    summarize(s2 = mean(e^2, na.rm = TRUE), .by = c(pa, doy, x, y)) %>%
+    summarize(s2 = var(e, na.rm = TRUE), .by = c(pa, doy, x, y)) %>%
     summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, doy)) %>%
     mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
              factor())
@@ -344,7 +344,7 @@ ggsave('Figures/figure-3.png', fig_3, units = "in", width = 6.86,
        height = 8.52, bg = "white", dpi = 600)
 
 # check years with oddly high variance
-filter(s2_year, s2 > 0.02)
+filter(s2_year, s2 > 0.015)
 
 #plot quantiles (figure 4) ---------------------------------------------------------
 #' *NOTE: converting negative CV to Inf since CV --> Inf as NDVI --> 0*

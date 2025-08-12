@@ -226,7 +226,7 @@ if(file.exists('Data_annotated/summarized-spatial-stats.rds')) {
   est <- d %>%
     summarize(unmodeled_mean = mean(NDVI, na.rm = TRUE), # for fig 1
               mean_e = mean(e, na.rm = TRUE), # for fig S1
-              s2_hat = mean(e^2), #' using `var()` would subtract `mean(e)`
+              s2_hat = var(e), #' using `var()` to subtract `mean(e)`
               prop_water = prop_water[1], # there's only one unique value
               elev_m = elev_m[1], # there's only one unique value
               pa = pa[1], # there's only one unique value
@@ -244,8 +244,10 @@ if(file.exists('Data_annotated/summarized-spatial-stats.rds')) {
   # test
   ggplot(est) +
     coord_sf(crs = 'EPSG:4326') +
-    geom_raster(aes(x, y, fill = unmodeled_mean)) +
-    scale_fill_gradientn('Mean NDVI', colours = NDVI_cols)
+    geom_raster(aes(x, y, fill = s2_hat)) +
+    scale_fill_viridis_c('Variance in NDVI residuals')
+  
+  range(est$s2_hat, na.rm = TRUE)
 }
 
 ggplot(est, aes(y, s2_hat)) +
@@ -272,7 +274,7 @@ if(file.exists('Data_annotated/summarized-spatial-stats-albers.rds')) {
   writeRaster(est_albers$unmodeled_mean, 'Outputs/unmodeled-mean.tif')
   writeRaster(est_albers$mu_hat, 'Outputs/estimated-mean.tif')
   writeRaster(est_albers$mean_e, 'Outputs/mean-residuals.tif')
-  writeRaster(est_albers$s2_hat, 'Outputs/mean-squared-residuals.tif')
+  writeRaster(est_albers$s2_hat, 'Outputs/estimated-variance.tif')
   writeRaster(est_albers$cv_hat, 'Outputs/coefficient-of-variation.tif')
   
   # add ecozones
@@ -321,6 +323,12 @@ cowplot::plot_grid(
 # estimated long-term mean NDVI with CIs
 # mean NDVI and CIs: -0.00400; (-0.00405, -0.00394)
 # from summary:   Intercept + critical value     * standard error
-brms:::inv_logit(-2.3473613 + c(0, -1, 1) * 1.96 * 0.0003099) %>%
-  ndvi_to_11() %>%
-  round(5)
+if(exists('m_beta')) {
+  gratia::inv_link(m_beta)(-2.3473613 + c(0, -1, 1) * 1.96 * 0.0003099) %>%
+    ndvi_to_11() %>%
+    round(5)
+} else {
+  brms:::inv_logit(-2.3473613 + c(0, -1, 1) * 1.96 * 0.0003099) %>%
+    ndvi_to_11() %>%
+    round(5)
+}
