@@ -374,12 +374,12 @@ areas <-
             top_rich = if_else(rich >= cutoffs$top_rich, rich, NA_real_))
 
 # save quantiles as rasters for ease of access
-r_areas <- rast(areas)
+r_areas <- rast(areas, crs = canada_albers)
 plot(r_areas)
 
 mask(as.numeric(! is.na(r_areas$top_mean)) +
        as.numeric(! is.na(r_areas$bottom_cv)),
-     canada) %>%
+     st_transform(canada, crs(r_areas))) %>%
   plot()
 
 writeRaster(r_areas$top_mean, 'Outputs/top-30-percent-mean-ndvi.tif')
@@ -414,7 +414,7 @@ var.quant <-
   geom_raster(aes(x, y, fill = bottom_var), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
   scale_fill_devon(name = 'Variance in NDVI', reverse = TRUE,
-                   limits = c(0, 0.05))
+                   limits = c(0, 0.04))
 
 cv.quant <-
   theme_4 +
@@ -422,7 +422,7 @@ cv.quant <-
   geom_raster(aes(x, y, fill = bottom_cv), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
   scale_fill_acton(name = 'CV in NDVI', reverse = TRUE,
-                   limits = c(0, NA))
+                   limits = c(0, 0.5))
 
 p_spp_richness <-
   theme_4 +
@@ -545,7 +545,7 @@ p_s2 <-
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
         axis.text = element_text(size = 8, family = "sans"))
 
-ggsave('Figures/figure-s2residuals-hist.png', p_s2, units = "in",
+ggsave('Figures/figure-s2-residuals-hist.png', p_s2, units = "in",
        bg = "white", width = 6.86, height = 4.5, dpi = 600)
 
 #correlation between mean and variance (Fig. S3 in appendix) --------------
@@ -567,5 +567,5 @@ p_s3 <-
                                barwidth = 6, barheight = 0.5,
                                direction = "horizontal"))
 
-ggsave("Figures/figure-s3mean-variance-correlation.png", p_s3,
+ggsave("Figures/figure-s3-mean-variance-correlation.png", p_s3,
        width = 6.86, height = 6.86, units = "in", dpi = 600, bg = "white")
