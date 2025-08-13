@@ -556,15 +556,16 @@ p_s3 <-
   theme(panel.grid = element_blank(),
         axis.title = element_text(size=8, family = "sans", face = "bold"),
         axis.text = element_text(size=6, family = "sans"),
-        plot.title = element_text(hjust = -0.05, size = 12, family = "sans", face = "bold"),
+        plot.title = element_text(hjust = -0.05, size = 12,
+                                  family = "sans", face = "bold"),
         legend.position = "top",
         plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm"),
         legend.title = element_text(face = "bold")) +
-  scale_x_continuous('Mean NDVI', expand = c(0.01,0)) +
-  scale_y_continuous('Variance in NDVI', expand = c(0.01,0), limits = c(0, 0.1)) +
+  scale_x_continuous('Mean NDVI') +
+  scale_y_continuous('Variance in NDVI') +
   khroma::scale_fill_lapaz(name = 'Count', reverse = TRUE) +
   guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
-                               barwidth = 6, barheight = 0.5,
+                               barwidth = 15, barheight = 0.5,
                                direction = "horizontal"))
 
 ggsave("Figures/figure-s3-mean-variance-correlation.png", p_s3,
