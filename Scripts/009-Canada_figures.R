@@ -7,6 +7,7 @@ library('terra') #for basemaps
 library('ggspatial')
 library('dplyr') # for data wrangling
 library('khroma') # for color palettes
+library('cowplot') # for multi-panel figures
 source('Functions/scale-ndvi.R')
 
 # color palette for mean NDVI
@@ -351,10 +352,13 @@ filter(s2_year, s2 > 0.015)
 plot(seq(-0.1, 1, by = 1e-3), 0.01 / seq(-0.1, 1, by = 1e-3), type = 'l',
      col = 'red', lwd = 5, xlab = 'Mean NDVI', ylab = 'CV of NDVI')
 
-# add a column of species richness
-est_albers <- mutate(est_albers,
-                     rich = extract(rast('Data/species_richness.tif'),
-                                    tibble(x, y))[, 2])
+# add columns of species richness and 
+est_albers <-
+  mutate(est_albers,
+         rich = extract(rast('Data/species_richness.tif'),
+                        tibble(x, y))[, 2],
+         extr = extract(rast('Outputs/n-extreme-months-1981-2024.tif'),
+                        tibble(x, y))[, 2])
 
 #calculate top and bottom 30th percentiles
 cutoffs <- est_albers %>%
@@ -362,7 +366,8 @@ cutoffs <- est_albers %>%
   summarize(top_mean = quantile(mu_hat, probs = 0.7),
             bottom_var = quantile(s2_hat, probs = 0.3),
             bottom_cv = quantile(cv_hat, probs = 0.3),
-            top_rich = quantile(rich, probs = 0.7, na.rm = TRUE))
+            top_rich = quantile(rich, probs = 0.7, na.rm = TRUE),
+            bottom_extr = quantile(extr, probs = 0.3, na.rm = TRUE))
 
 # identify areas in each quantile group
 areas <-
@@ -371,7 +376,8 @@ areas <-
             top_mean = if_else(mu_hat >= cutoffs$top_mean, mu_hat, NA_real_),
             bottom_var = if_else(s2_hat <= cutoffs$bottom_var, s2_hat, NA_real_),
             bottom_cv = if_else(cv_hat <= cutoffs$bottom_cv, cv_hat, NA_real_),
-            top_rich = if_else(rich >= cutoffs$top_rich, rich, NA_real_))
+            top_rich = if_else(rich >= cutoffs$top_rich, rich, NA_real_),
+            bottom_extr = if_else(extr <= cutoffs$bottom_extr, extr, NA_real_))
 
 # save quantiles as rasters for ease of access
 r_areas <- rast(areas, crs = canada_albers)
@@ -432,11 +438,37 @@ p_spp_richness <-
   scale_fill_batlow(name = 'Species richness', reverse = TRUE,
                     limits = c(0, NA))
 
-fig_4 <- ggarrange(mean.quant, var.quant, cv.quant, p_spp_richness,
-                   nrow = 2, ncol = 2, labels = "AUTO")
+p_extr <-
+  theme_4 +
+  geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
+  geom_raster(aes(x, y, fill = bottom_extr), areas) +
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
+  scale_fill_lajolla(name = 'Months with extreme temperatures',
+                     limits = c(77, 308))
+
+p_pas <- ggplot() +
+  theme_void() +
+  theme(legend.position = 'inside',
+        legend.position.inside = c(0.1, 0.95),
+        legend.justification = 'left',
+        legend.title = element_text(face = "bold"),
+        legend.key.size = unit(0.4, 'cm'),
+        legend.text = element_text(size=7, family = "sans", face = "bold"),
+        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) +
+  geom_raster(aes(x, y, fill = pa),
+              as.data.frame(r_pas, xy = TRUE) %>%
+                mutate(pa = if_else(layer == 1, 'Yes', 'No') %>%
+                         factor(levels = c('Yes', 'No')))) +
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
+  scale_fill_manual('Protected areas', values = c('#255016', 'grey50'))
+p_pas
+
+fig_4 <- plot_grid(p_pas, mean.quant, var.quant,
+                   cv.quant, p_spp_richness, p_extr,
+                   nrow = 2, labels = "AUTO")
 
 ggsave('Figures/figure-4.png', fig_4, units = "in", bg = "white",
-       width = 8.5, height = 7, dpi = 600)
+       width = 12.75, height = 7, dpi = 600)
 
 #plot model residuals (Fig S1 in appendix) --------------------------------
 
