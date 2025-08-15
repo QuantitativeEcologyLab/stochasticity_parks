@@ -467,7 +467,7 @@ fig_4 <- plot_grid(p_pas, mean.quant, var.quant,
                    cv.quant, p_spp_richness, p_extr,
                    nrow = 2, labels = "AUTO")
 
-ggsave('Figures/figure-4.png', fig_4, units = "in", bg = "white",
+ggsave('Figures/figure-5.png', fig_4, units = "in", bg = "white",
        width = 12.75, height = 7, dpi = 600)
 
 #plot model residuals (Fig S1 in appendix) --------------------------------

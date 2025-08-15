@@ -321,7 +321,7 @@ C <-
 cowplot::plot_grid(A, B, C,
                    nrow = 1)
 
-ggsave('Figures/richness_regression.png',
+ggsave('Figures/figure-4-richness_regression.png',
        width = 6.86, height = (6.86 / 3), units = 'in',
        dpi = 600, bg = 'white', scale = 2)
 
