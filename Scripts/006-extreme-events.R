@@ -162,8 +162,8 @@ map <-
   geom_sf(data = canada, fill = 'grey', color = 'transparent') +
   geom_raster(aes(x, y, fill = n_extr)) +
   geom_sf(data = canada, fill = 'transparent', color = 'black', lwd = 0.1) +
-  scale_fill_acton(name = 'Number of extreme-temperature months',
-                   reverse = TRUE) +
+  scale_fill_lajolla(name = 'Number of extreme-temperature months',
+                     limits = range(extremes_longlat$n_extr)) +
   theme_map() +
   guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
                                barwidth = 20, barheight = 0.5,
@@ -178,7 +178,7 @@ hexes <-
   ggplot() +
   stat_summary_hex(aes(mu, s2, z = n_extr), extremes, na.rm = TRUE,
                    bins = 75) +
-  scale_fill_acton(reverse = TRUE, limits = range(extremes$n_extr)) +
+  scale_fill_lajolla(limits = range(extremes_longlat$n_extr)) +
   labs(x = 'Mean NDVI', y = 'Variance in NDVI residuals') +
   theme(legend.position = 'none', text = element_text(face = 'bold'))
 
