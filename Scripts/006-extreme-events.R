@@ -130,8 +130,12 @@ if(file.exists('Data/extreme-temperature-months-1981-2024.rds')) {
 }
 
 total_extremes <- sum(extremes_longlat$n_extr)
+total_extremes # 4637257
+
+# percentage of months with extreme temperatures
 total_extremes / (12 * (2024 - 1981) * nrow(read.csv('ClimateNA_v760/can-dem.csv')))
-range(extremes_longlat$n_extr)
+
+range(extremes_longlat$n_extr) # 77 to 308
 range(extremes_longlat$n_extr) / (12 * (2024 - 1981))
 
 # project to Albers CRS
@@ -145,6 +149,7 @@ extremes_rast <-
 
 plot(extremes_rast)
 plot(canada, add = TRUE)
+writeRaster(extremes_rast, 'Outputs/n-extreme-months-1981-2024.tif')
 
 extremes <-
   as.data.frame(extremes_rast, xy = TRUE, na.rm = TRUE) %>%
