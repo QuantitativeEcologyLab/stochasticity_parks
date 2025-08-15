@@ -38,6 +38,7 @@ richness_df$var_hat <- terra::extract(var_ndvi, richness_df[,c("x","y")])[,"s2_h
 #Drop extreme values of var_hat
 hist(richness_df$var_hat)
 mean(richness_df$var_hat > 0.04)
+sum(richness_df$var_hat > 0.04)
 richness_df <- richness_df[richness_df$var_hat < 0.04,]
 
 
