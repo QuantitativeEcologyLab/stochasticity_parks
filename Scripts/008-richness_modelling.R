@@ -100,7 +100,7 @@ layout(1)
 mu_hat <- data.frame(mu_hat = seq(min(richness_df$mu_hat),
                                   max(richness_df$mu_hat),
                                   length.out = 500),
-                     var_hat = mean(richness_df$var_hat) # 0.0113285
+                     var_hat = mean(richness_df$var_hat) # 0.01129803
 )
 
 #Predict from the fitted model excluding the terms related to the variance and spatial structure
@@ -161,7 +161,7 @@ A <-
 #Build a dataframe for generating the predictions for the figure 
 var_hat <- data.frame(var_hat = seq(min(richness_df$var_hat), 0.04,
                                     length.out = 1000),
-                      mu_hat = mean(richness_df$mu_hat)
+                      mu_hat = mean(richness_df$mu_hat) # 0.2066355
 )
 
 #Predict from the fitted model excluding the terms related to the mean and spatial structure
