@@ -64,9 +64,7 @@ output <-
 table(grepl('Downloaded', output))
 
 #' There's a few days that have no raster associated with them, but it's
-#' generally rare. We have 8 2-day gaps, 3 3-day gaps, 2 4-day gaps, and
-#' 1 16-day gap. The gaps range from 1982 to 2024, and the longest one
-#' is in summer of 2022 (see `gaps` below).
+#' generally rare. See `gaps` below.
 
 # check files
 fn_dates <- fn_tib %>%
