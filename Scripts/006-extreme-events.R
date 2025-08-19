@@ -118,25 +118,31 @@ if(file.exists('Data/extreme-temperature-months-1981-2024.rds')) {
     pivot_longer(Tave01:Tave12, values_to = 'temp_C', names_to = 'month') %>%
     # get number of months with extreme temperatures for each year
     # using 1901-1980 as reference years
-    summarize(q_0.025 = if_else(year < 1981, NA_real_, temp_C) %>%
-                quantile(probs = 0.025, na.rm = TRUE),
-              q_0.975 = if_else(year < 1981, NA_real_, temp_C) %>%
-                quantile(probs = 0.975, na.rm = TRUE),
-              n_extr = sum(temp_C < q_0.025 | temp_C > q_0.975),
-              .by = c(Latitude, Longitude, Elevation, month)) %>%
-    summarize(n_extr = sum(n_extr), .by = c(Latitude, Longitude, Elevation))
+    group_by(Latitude, Longitude, Elevation, month) %>%
+    mutate(
+      # find lower and upper bounds using only data prior to 1981
+      q_0.025 = if_else(year < 1981, temp_C, NA_real_) %>%
+        quantile(probs = 0.025, na.rm = TRUE),
+      q_0.975 = if_else(year < 1981, temp_C, NA_real_) %>%
+        quantile(probs = 0.975, na.rm = TRUE),
+      extreme = year >= 1981 & (temp_C < q_0.025 | temp_C > q_0.975)) %>%
+    group_by(Latitude, Longitude, Elevation) %>%
+    summarize(n_extr = sum(extreme), .groups = 'drop')
   
   saveRDS(extremes_longlat, 'Data/extreme-temperature-months-1981-2024.rds')
 }
 
 total_extremes <- sum(extremes_longlat$n_extr)
-total_extremes # 4637257
+total_extremes # 1,747,106
 
 # percentage of months with extreme temperatures
-total_extremes / (12 * (2024 - 1981) * nrow(read.csv('ClimateNA_v760/can-dem.csv')))
+n_locations <- nrow(read.csv('ClimateNA_v760/can-dem.csv'))
+paste0(round(total_extremes / ((2024 - 1981) * 12 * n_locations) * 100, 1),
+       '%')
 
-range(extremes_longlat$n_extr) # 77 to 308
-range(extremes_longlat$n_extr) / (12 * (2024 - 1981))
+range(extremes_longlat$n_extr) # 24 to 164
+paste0(round(range(extremes_longlat$n_extr) / (12*(2024-1980)) * 100, 1),
+       '%')
 
 # project to Albers CRS
 extremes_rast <-
