@@ -347,7 +347,7 @@ ggsave('Figures/figure-3.png', fig_3, units = "in", width = 6.86,
 # check years with oddly high variance
 filter(s2_year, s2 > 0.015)
 
-#plot quantiles (figure 4) ---------------------------------------------------------
+#plot quantiles (figure 5) ---------------------------------------------------------
 #' *NOTE: converting negative CV to Inf since CV --> Inf as NDVI --> 0*
 plot(seq(-0.1, 1, by = 1e-3), 0.01 / seq(-0.1, 1, by = 1e-3), type = 'l',
      col = 'red', lwd = 5, xlab = 'Mean NDVI', ylab = 'CV of NDVI')
@@ -392,8 +392,8 @@ writeRaster(r_areas$top_mean, 'Outputs/top-30-percent-mean-ndvi.tif')
 writeRaster(r_areas$bottom_var, 'Outputs/bottom-30-percent-variance-ndvi.tif')
 writeRaster(r_areas$bottom_cv, 'Outputs/bottom-30-percent-cv-ndvi.tif')
 
-# make figure 4
-theme_4 <-
+# make figure 5
+theme_5 <-
   ggplot() +
   theme_void() +
   theme(legend.position = 'inside',
@@ -407,7 +407,7 @@ theme_4 <-
                                barwidth = 6, barheight = 0.5,
                                direction = "horizontal"))
 mean.quant <-
-  theme_4 +
+  theme_5 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = top_mean), areas) +
   geom_sf(data = canada, color = "black", fill = NA, lwd = 0.2) + 
@@ -415,7 +415,7 @@ mean.quant <-
                        limits = range(est_albers$mu_hat))
 
 var.quant <-
-  theme_4 +
+  theme_5 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = bottom_var), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
@@ -423,7 +423,7 @@ var.quant <-
                    limits = c(0, 0.04))
 
 cv.quant <-
-  theme_4 +
+  theme_5 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = bottom_cv), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
@@ -431,7 +431,7 @@ cv.quant <-
                    limits = c(0, 0.5))
 
 p_spp_richness <-
-  theme_4 +
+  theme_5 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = top_rich), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
@@ -439,12 +439,12 @@ p_spp_richness <-
                     limits = c(0, NA))
 
 p_extr <-
-  theme_4 +
+  theme_5 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = bottom_extr), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
   scale_fill_lajolla(name = 'Months with extreme temperatures',
-                     limits = c(77, 308))
+                     limits = c(24, 164))
 
 p_pas <- ggplot() +
   theme_void() +
@@ -461,13 +461,12 @@ p_pas <- ggplot() +
                          factor(levels = c('Yes', 'No')))) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
   scale_fill_manual('Protected areas', values = c('#255016', 'grey50'))
-p_pas
 
-fig_4 <- plot_grid(p_pas, mean.quant, var.quant,
+fig_5 <- plot_grid(p_pas, mean.quant, var.quant,
                    cv.quant, p_spp_richness, p_extr,
                    nrow = 2, labels = "AUTO")
 
-ggsave('Figures/figure-5.png', fig_4, units = "in", bg = "white",
+ggsave('Figures/figure-5.png', fig_5, units = "in", bg = "white",
        width = 12.75, height = 7, dpi = 600)
 
 #plot model residuals (Fig S1 in appendix) --------------------------------
@@ -478,7 +477,7 @@ p_res_canada <-
   geom_sf(data = canada, fill = 'grey', color = "transparent") + 
   geom_raster(aes(x, y, fill = mean_e), est_albers) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
-  scale_fill_distiller("Mean NDVI residual", type = 'div',
+  scale_fill_distiller("Mean NDVI residuals", type = 'div',
                        palette = 5, limits = c(-0.2, 0.2)) +
   theme_void() +
   theme(plot.margin = unit(c(0.2, 0.1, 0.4, 0.2), "cm"),
