@@ -179,7 +179,7 @@ hexes <-
   stat_summary_hex(aes(mu, s2, z = n_extr), extremes, na.rm = TRUE,
                    bins = 75) +
   scale_fill_lajolla(limits = range(extremes_longlat$n_extr)) +
-  labs(x = 'Mean NDVI', y = 'Variance in NDVI residuals') +
+  labs(x = 'Mean NDVI', y = 'Variance in NDVI') +
   theme(legend.position = 'none', text = element_text(face = 'bold'))
 
 # plot the two together

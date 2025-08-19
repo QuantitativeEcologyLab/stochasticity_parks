@@ -478,7 +478,7 @@ p_res_canada <-
   geom_sf(data = canada, fill = 'grey', color = "transparent") + 
   geom_raster(aes(x, y, fill = mean_e), est_albers) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
-  scale_fill_distiller("Mean response residuals", type = 'div',
+  scale_fill_distiller("Mean NDVI residual", type = 'div',
                        palette = 5, limits = c(-0.2, 0.2)) +
   theme_void() +
   theme(plot.margin = unit(c(0.2, 0.1, 0.4, 0.2), "cm"),
@@ -508,7 +508,7 @@ p_hex <-
         legend.spacing.y = unit(0.1, 'cm'),
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
         legend.position = "top") +
-  ylab("Response residuals") +
+  ylab("NDVI residuals") +
   scale_fill_lapaz(name = 'Count', reverse = TRUE,
                    labels = function(x) {
                      .e <- floor(log10(x))
@@ -568,7 +568,7 @@ p_s2 <-
   ggplot() +
   geom_histogram(aes(e), fill = 'grey', color = 'black', binwidth = 0.025,
                  center = 0) +
-  xlab("Response Residuals") +
+  xlab("NDVI Residuals") +
   ylab('Count') +
   scale_y_continuous(expand = c(0.025, 0)) +
   theme_classic() +
@@ -583,7 +583,7 @@ ggsave('Figures/figure-s2-residuals-hist.png', p_s2, units = "in",
 #correlation between mean and variance (Fig. S3 in appendix) --------------
 p_s3 <-
   ggplot(est_albers, aes(x = mu_hat, y = s2_hat)) +
-  geom_hex() +
+  geom_hex(bins = 75) +
   theme_classic() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size=8, family = "sans", face = "bold"),
@@ -595,7 +595,8 @@ p_s3 <-
         legend.title = element_text(face = "bold")) +
   scale_x_continuous('Mean NDVI') +
   scale_y_continuous('Variance in NDVI') +
-  khroma::scale_fill_lapaz(name = 'Count', reverse = TRUE) +
+  khroma::scale_fill_lapaz(name = 'Count', reverse = TRUE,
+                           breaks = c(1, 500, 1000, 1500)) +
   guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
                                barwidth = 15, barheight = 0.5,
                                direction = "horizontal"))
