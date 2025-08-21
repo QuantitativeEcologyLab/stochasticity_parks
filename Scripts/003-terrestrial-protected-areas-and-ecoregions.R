@@ -49,6 +49,7 @@ r_pas <- pas %>%
   crop(prov, mask = TRUE)
 plot(r_pas)
 
+time(r_pas) <- NULL # remove time
 writeRaster(r_pas, 'Data/protected-areas/protected-areas-0-1.tif')
 
 # ecoregions
