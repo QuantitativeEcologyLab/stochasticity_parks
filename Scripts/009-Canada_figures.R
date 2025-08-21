@@ -266,13 +266,17 @@ if(all(file.exists(c('Outputs/variance-estimates-year.rds',
 } else {
   s2_year <- d %>%
     summarize(s2 = var(e, na.rm = TRUE), .by = c(pa, year, x, y)) %>%
-    summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, year)) %>%
+    summarize(s2_se = sqrt(var(s2, na.rm = TRUE) / n()),
+              s2 = mean(s2, na.rm = TRUE),
+              .by = c(pa, year)) %>%
     mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
              factor())
   
   s2_doy <- d %>%
     summarize(s2 = var(e, na.rm = TRUE), .by = c(pa, doy, x, y)) %>%
-    summarize(s2 = mean(s2, na.rm = TRUE), .by = c(pa, doy)) %>%
+    summarize(s2_se = sqrt(var(s2, na.rm = TRUE) / n()),
+              s2 = mean(s2, na.rm = TRUE),
+              .by = c(pa, doy)) %>%
     mutate(pa = if_else(pa == 0, "Outside PAs", "Within PAs") %>%
              factor())
   
@@ -283,9 +287,10 @@ if(all(file.exists(c('Outputs/variance-estimates-year.rds',
 # figure 3B
 parkyvar <-
   ggplot(s2_year) +
-  geom_point(aes(year, s2, color = pa), size = 0.1) +
-  geom_smooth(aes(year, s2, colour = pa, fill = pa), method = 'gam',
-              formula = y ~ s(x, k = 10), lwd = 0.5) +
+  geom_vline(xintercept = 2014, lwd = 0.25, lty = 'dashed') +
+  geom_errorbar(aes(year, ymin = s2 - s2_se, ymax = s2 + s2_se,
+                    color = pa), linewidth = 0.1, width = 1) +
+  geom_point(aes(year, s2, color = pa), size = 0.25) +
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
   xlab("Year") +
@@ -300,14 +305,15 @@ parkyvar <-
         legend.spacing.y = unit(0.1, 'cm'),
         legend.text = element_text(size = 6, family = "sans", face = "bold"),
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = 'inside', legend.position.inside = c(0.25, 0.9))
+        legend.position = 'inside', legend.position.inside = c(0.25, 0.9),
+        legend.key.width = rel(0.4))
 
 # figure 3C: residual trends by day of year
 parkdoyvar <-
   ggplot(s2_doy) +
-  geom_point(aes(doy, s2, color = pa), size = 0.1) +
-  geom_smooth(aes(doy, s2, colour = pa, fill = pa), method = 'gam',
-              formula = y ~ s(x, k = 10), lwd = 0.5) +
+  geom_errorbar(aes(doy, ymin = s2 - s2_se, ymax = s2 + s2_se,
+                    color = pa), linewidth = 0.1, width = 7.5) +
+  geom_point(aes(doy, s2, color = pa), size = 0.25) +
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
   xlab("Day of year") +
@@ -317,7 +323,8 @@ parkdoyvar <-
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
         axis.text = element_text(size = 8, family = "sans"),
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = "none")
+        legend.position = "none",
+        legend.key.width = rel(0.4))
 
 # figure 3D: boxplots of variance in different ecozones
 boxvar <-
@@ -343,7 +350,7 @@ boxvar <-
         legend.spacing.y = unit(0.1, 'cm'),
         legend.text = element_text(size=6, family = "sans", face = "bold"),
         plot.margin = unit(c(0.2,0.1,0.1,0.2), "cm"), #top, left, bottom, right
-        legend.position = 'inside', legend.position.inside = c(0.9, 0.9))
+        legend.position = 'inside', legend.position.inside = c(0.9, 0.2))
 
 fig_3 <-
   ggarrange(parkyvar, parkdoyvar, nrow = 2, labels = c("B", "C")) %>%
