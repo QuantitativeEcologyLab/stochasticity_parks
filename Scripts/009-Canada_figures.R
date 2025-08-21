@@ -149,8 +149,18 @@ if(file.exists('Outputs/smooth-estimates-year.rds') &
   gc()
 }
 
+# find maximum differences between PA and non-PA areas throughout the years
+preds_year %>%
+  select(year, pa, mu_hat) %>%
+  tidyr::pivot_wider(names_from = pa, values_from = mu_hat) %>%
+  mutate(diff = `Within PAs` - `Outside PAs`) %>%
+  pull(diff) %>%
+  abs() %>%
+  max() # 0.002655057
+
 parkymean <-
   ggplot(preds_year) +
+  geom_vline(xintercept = 2014, lwd = 0.25, lty = 'dashed') +
   geom_ribbon(aes(year, ymin = lwr_95, ymax = upr_95, fill = pa),
               alpha = 0.3) +
   geom_line(aes(year, mu_hat, color = pa)) +
@@ -165,7 +175,7 @@ parkymean <-
         legend.spacing.y = unit(0.1, 'cm'),
         legend.text = element_text(size = 6, family = "sans", face = "bold"),
         plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), "cm"), #top, left, bottom, right
-        legend.position = 'inside', legend.position.inside = c(0.8, 0.9))
+        legend.position = 'inside', legend.position.inside = c(0.3, 0.2))
 
 #mean trends by day of year
 parkdoymean <-
