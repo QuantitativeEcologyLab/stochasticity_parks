@@ -183,11 +183,11 @@ parkdoymean <-
   geom_ribbon(aes(doy, ymin = lwr_95, ymax = upr_95, fill = pa),
               alpha = 0.3) +
   geom_line(aes(doy, mu_hat, color = pa)) +
-  scale_colour_manual(name = NULL, values=c("#A7C957", "darkgreen"),
+  scale_colour_manual(name = NULL, values = c("#A7C957", "darkgreen"),
                       aesthetics = c('color', 'fill')) +
-  xlab("Day of year") +
+  scale_x_continuous(NULL, breaks = c(79, 171, 263, 354),
+                     labels = \(x) format(as.Date('2024-12-31') + x, '%b %d')) +
   ylab("Mean NDVI") +
-  scale_x_continuous(expand = c(0,0)) +
   theme_classic() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 9, family = "sans", face = "bold"),
@@ -316,7 +316,8 @@ parkdoyvar <-
   geom_point(aes(doy, s2, color = pa), size = 0.25) +
   scale_colour_manual(name = NULL, aesthetics = c('color', 'fill'),
                       values = c('lightskyblue2', 'dodgerblue3')) +
-  xlab("Day of year") +
+  scale_x_continuous(NULL, breaks = c(79, 171, 263, 354),
+                     labels = \(x) format(as.Date('2024-12-31') + x, '%b %d')) +
   ylab("Variance in NDVI residuals") +
   theme_classic() +
   theme(panel.grid = element_blank(),
