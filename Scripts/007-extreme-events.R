@@ -10,6 +10,7 @@ library('ggspatial')  # for maps in ggplot2
 library('elevatr')    # for digital elevation models
 library('khroma')     # for color palettes
 library('mgcv')       # for GAMs
+library('gratia')       # for GAMs
 
 theme_set(
   theme_classic() +
@@ -135,9 +136,9 @@ if(file.exists('Data/extreme-temperature-months-1981-2024.rds')) {
 total_extremes <- sum(extremes_longlat$n_extr)
 total_extremes # 1,747,106
 
-# percentage of months with extreme temperatures
+# percentage of months with extreme temperatures (44 complete years of data)
 n_locations <- nrow(read.csv('ClimateNA_v760/can-dem.csv'))
-paste0(round(total_extremes / ((2024 - 1981) * 12 * n_locations) * 100, 1),
+paste0(round(total_extremes / ((2025 - 1981) * 12 * n_locations) * 100, 1),
        '%')
 
 range(extremes_longlat$n_extr) # 24 to 164
@@ -161,7 +162,8 @@ extremes <-
   as.data.frame(extremes_rast, xy = TRUE, na.rm = TRUE) %>%
   mutate(mu = extract(r_mu, data.frame(x, y))[, 2],
          s2 = extract(r_s2, data.frame(x, y))[, 2]) %>%
-  mutate(s2 = if_else(s2 > 0.04, 0.04, s2))
+  mutate(s2 = if_else(s2 > 0.04, 0.04, s2)) %>%
+  na.omit()
 
 map <-
   ggplot(extremes) +
