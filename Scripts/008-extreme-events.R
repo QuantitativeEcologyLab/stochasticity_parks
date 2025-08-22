@@ -160,8 +160,14 @@ extremes <-
   as.data.frame(extremes_rast, xy = TRUE, na.rm = TRUE) %>%
   mutate(mu = extract(r_mu, data.frame(x, y))[, 2],
          s2 = extract(r_s2, data.frame(x, y))[, 2]) %>%
-  mutate(s2 = if_else(s2 > 0.04, 0.04, s2)) %>%
   na.omit()
+
+# drop variance values with too much leverage
+hist(extremes$s2)
+sum(extremes$s2 > 0.04, na.rm = TRUE)
+paste(round(mean(extremes$s2 > 0.04, na.rm = TRUE) * 100, 2), '%')
+
+extremes <- filter(extremes, s2 <= 0.04)
 
 map <-
   ggplot(extremes) +
