@@ -365,7 +365,7 @@ ggsave('Figures/figure-3.png', fig_3, units = "in", width = 6.86,
 # check years with oddly high variance
 filter(s2_year, s2 > 0.015)
 
-#plot quantiles (figure 5) ---------------------------------------------------------
+#plot quantiles (figure 6) ---------------------------------------------------------
 #' *NOTE: converting negative CV to Inf since CV --> Inf as NDVI --> 0*
 plot(seq(-0.1, 1, by = 1e-3), 0.01 / seq(-0.1, 1, by = 1e-3), type = 'l',
      col = 'red', lwd = 5, xlab = 'Mean NDVI', ylab = 'CV of NDVI')
@@ -410,8 +410,8 @@ writeRaster(r_areas$top_mean, 'Outputs/top-30-percent-mean-ndvi.tif')
 writeRaster(r_areas$bottom_var, 'Outputs/bottom-30-percent-variance-ndvi.tif')
 writeRaster(r_areas$bottom_cv, 'Outputs/bottom-30-percent-cv-ndvi.tif')
 
-# make figure 5
-theme_5 <-
+# make figure 6
+theme_6 <-
   ggplot() +
   theme_void() +
   theme(legend.position = 'inside',
@@ -425,7 +425,7 @@ theme_5 <-
                                barwidth = 6, barheight = 0.5,
                                direction = "horizontal"))
 mean.quant <-
-  theme_5 +
+  theme_6 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = top_mean), areas) +
   geom_sf(data = canada, color = "black", fill = NA, lwd = 0.2) + 
@@ -433,7 +433,7 @@ mean.quant <-
                        limits = range(est_albers$mu_hat))
 
 var.quant <-
-  theme_5 +
+  theme_6 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = bottom_var), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
@@ -441,7 +441,7 @@ var.quant <-
                    limits = c(0, 0.04))
 
 cv.quant <-
-  theme_5 +
+  theme_6 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = bottom_cv), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
@@ -449,7 +449,7 @@ cv.quant <-
                    limits = c(0, 0.5))
 
 p_spp_richness <-
-  theme_5 +
+  theme_6 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = top_rich), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
@@ -457,7 +457,7 @@ p_spp_richness <-
                     limits = c(0, NA))
 
 p_extr <-
-  theme_5 +
+  theme_6 +
   geom_sf(data = canada, color = "black", fill = 'grey50', lwd = 0.2) + 
   geom_raster(aes(x, y, fill = bottom_extr), areas) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
@@ -480,11 +480,11 @@ p_pas <- ggplot() +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
   scale_fill_manual('Protected areas', values = c('#255016', 'grey50'))
 
-fig_5 <- plot_grid(p_pas, mean.quant, var.quant,
+fig_6 <- plot_grid(p_pas, mean.quant, var.quant,
                    cv.quant, p_spp_richness, p_extr,
                    nrow = 2, labels = "AUTO")
 
-ggsave('Figures/figure-5.png', fig_5, units = "in", bg = "white",
+ggsave('Figures/figure-6.png', fig_6, units = "in", bg = "white",
        width = 12.75, height = 7, dpi = 600)
 
 #plot model residuals (Fig S1 in appendix) --------------------------------
