@@ -26,9 +26,7 @@ theme_set(
           legend.text = element_text(size = 6, family = 'sans', face = 'bold'),
           panel.background = element_rect(fill = 'transparent'),
           plot.background = element_rect(fill = 'transparent', color = NA),
-          plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), 'cm'), #top, left, bottom, right
-          legend.position = 'inside',
-          legend.position.inside = c(0.25, 0.9)))
+          plot.margin = unit(c(0.2, 0.1, 0.2, 0.2), 'cm')))
 
 canada_albers <- 'ESRI:102001'
 canada <- rgeoboundaries::geoboundaries('Canada') %>%
@@ -173,34 +171,69 @@ map <-
   scale_fill_lajolla(name = 'Number of extreme-temperature months',
                      limits = range(extremes_longlat$n_extr)) +
   theme_map() +
-  guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
+  guides(fill = guide_colorbar(title.position = 'top', ticks.colour = NA,
                                barwidth = 20, barheight = 0.5,
-                               direction = "horizontal")) +
+                               direction = 'horizontal')) +
   theme(legend.position = 'top', legend.justification = 'center',
-        panel.grid = element_blank(),
-        text = element_text(face = 'bold'))
+        panel.grid = element_blank(), text = element_text(face = 'bold'))
 
 # scatterplots of extreme events by mean and variance
 # ndvi can be < 0 and cv can be too large, so cv gives odd relationships
-hexes <-
+hexes_events <-
   ggplot() +
   stat_summary_hex(aes(mu, s2, z = n_extr), extremes, na.rm = TRUE,
-                   bins = 75) +
-  scale_fill_lajolla(limits = range(extremes_longlat$n_extr)) +
+                   bins = 75, fun = 'mean') +
+  scale_fill_lajolla(name = 'Number of extreme-temperature months',
+                     limits = range(extremes_longlat$n_extr)) +
   labs(x = 'Mean NDVI', y = 'Variance in NDVI') +
-  theme(legend.position = 'none', text = element_text(face = 'bold'))
+  theme(legend.position = 'top', legend.justification = 'center',
+        panel.grid = element_blank(), text = element_text(face = 'bold')) +
+  guides(fill = guide_colorbar(title.position = 'top', ticks.colour = NA,
+                               barwidth = 20, barheight = 0.5,
+                               direction = 'horizontal'))
 
-# plot the two together
-fig_s4 <- plot_grid(map, hexes, ncol = 1, labels = c('A', 'B'))
+hexes_n_obs <-
+  ggplot() +
+  stat_summary_hex(aes(mu, s2, z = n_extr), extremes, na.rm = TRUE,
+                   bins = 75, fun = 'length') +
+  scale_fill_lapaz(name = 'Number of observations', reverse = TRUE) +
+  labs(x = 'Mean NDVI', y = 'Variance in NDVI') +
+  theme(legend.position = 'top', legend.justification = 'center',
+        panel.grid = element_blank(), text = element_text(face = 'bold')) +
+  guides(fill = guide_colorbar(title.position = 'top', ticks.colour = NA,
+                               barwidth = 20, barheight = 0.5,
+                               direction = 'horizontal'))
+
+# find the coordinates of the main peak
+plot_grid(hexes_events +
+            geom_hline(yintercept = 0.01) +
+            geom_vline(xintercept = 0.05),
+          hexes_n_obs +
+            geom_hline(yintercept = 0.01) +
+            geom_vline(xintercept = 0.05))
+
+# the secondary peak has little data to support it
+plot_grid(hexes_events +
+            geom_hline(yintercept = 0.005) +
+            geom_vline(xintercept = 0.15),
+          hexes_n_obs +
+            geom_hline(yintercept = 0.005) +
+            geom_vline(xintercept = 0.15))
+
+# plot the panels together
+fig_s4 <- plot_grid(map,
+                    plot_grid(hexes_events, hexes_n_obs, nrow = 1,
+                              labels = c('B', 'C')),
+                    ncol = 1, labels = c('A', ''))
 
 ggsave('Figures/figure-s4-canada-extreme-events.png', fig_s4,
-       width = 6.46, height = 11, dpi = 600, bg = 'white')
+       width = 12.75, height = 11, dpi = 600, bg = 'white')
 
 # fit a model with mean and variance in NDVI ----
 m <-
   bam(
     n_extr ~ s(mu, k = 10) + s(sqrt(s2), k = 10) + ti(mu, sqrt(s2), k = 3),
-    family = nb(link = "log"),
+    family = nb(link = 'log'),
     data = extremes,
     discrete = TRUE,
     method = 'fREML')
@@ -208,184 +241,134 @@ draw(m, n = 250, rug = FALSE, nrow = 1)
 appraise(m, point_alpha = 0.3)
 summary(m)
 
-#Build a dataframe for generating the predictions for the figure 
+# predict from the model ----
 preds_mu <-
   tibble(mu = seq(min(extremes$mu), max(extremes$mu), length.out = 500),
          s2 = 0) %>%
   bind_cols(.,
-            predict(m, newdata = ., type = "link", se = TRUE, ) %>%
+            predict(m, newdata = ., type = 'link', se = TRUE,
+                    terms = c('(Intercept)', 's(mu)')) %>%
               as.data.frame()) %>%
   mutate(est = exp(fit),
          lwr_95 = exp(fit - 1.96 * se.fit),
          upr_95 = exp(fit + 1.96 * se.fit))
 
+preds_s2 <-
+  tibble(s2 = seq(min(extremes$s2), max(extremes$s2), length.out = 500),
+         mu = 0) %>%
+  bind_cols(.,
+            predict(m, newdata = ., type = 'link', se = TRUE,
+                    terms = c('(Intercept)', 's(sqrt(s2))')) %>%
+              as.data.frame()) %>%
+  mutate(est = exp(fit),
+         lwr_95 = exp(fit - 1.96 * se.fit),
+         upr_95 = exp(fit + 1.96 * se.fit))
 
-# center the function at 1
-mu_hat$richness_min <- mu_hat$richness_min / mean(mu_hat$richness_hat)
-mu_hat$richness_max <- mu_hat$richness_max / mean(mu_hat$richness_hat)
-mu_hat$richness_hat <- mu_hat$richness_hat / mean(mu_hat$richness_hat)
+preds_int <-
+  expand_grid(mu = seq(min(extremes$mu), max(extremes$mu), length.out = 500),
+              s2 = seq(min(extremes$s2), max(extremes$s2), length.out = 500)) %>%
+  filter(! too_far(mu, s2, extremes$mu, extremes$s2, dist = 0.05)) %>%
+  mutate(est = predict(m, newdata = ., type = 'response', se = FALSE))
 
-#Generate panel A
-A <- 
-  ggplot()+
-  geom_hline(aes(yintercept = 1), col = "grey80", linetype = "dashed") +
-  geom_ribbon(data = mu_hat,
-              aes(mu_hat,
-                  ymin = richness_min,
-                  ymax = richness_max),
-              fill = "darkgreen",
+# create the figure ----
+# mean NDVI
+fig_5A <-
+  ggplot(preds_mu) +
+  geom_ribbon(aes(mu, ymin = lwr_95, ymax = upr_95),
+              fill = 'darkgreen',
               alpha = 0.3) +
-  geom_line(data = mu_hat,
-            aes(mu_hat,
-                richness_hat),
-            colour = "darkgreen",
+  geom_line(data = preds_mu, aes(mu, est),
+            colour = 'darkgreen', linewidth = 1) +
+  theme_classic() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(size=10, family = 'sans', face = 'bold'),
+        axis.title.x = element_text(size=10, family = 'sans', face = 'bold'),
+        axis.text.y  = element_text(size=10, family = 'sans', face = 'bold', color = 'black'),
+        axis.text.x  = element_text(size=10, family = 'sans', face = 'bold', color = 'black'),
+        plot.title = element_text(hjust = -0.05, size = 12, family = 'sans', face = 'bold'),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        legend.position = 'none',
+        legend.title = element_blank(),
+        legend.text = element_text(size=5, family = 'sans', face = 'bold'),
+        legend.background = element_rect(fill = 'transparent'),
+        legend.key.size = unit(0.3, 'cm'),
+        legend.spacing.y = unit(0.2, 'cm'),
+        panel.background = element_rect(fill = 'transparent'),
+        plot.background = element_rect(fill = 'transparent', color = NA),
+        plot.margin = unit(c(0.2,0.1,0.2,0.2), 'cm')) +
+  scale_x_continuous('Mean NDVI', expand = c(0,0.005)) +
+  scale_y_continuous('Number of extreme-temperature months',
+                     limits = c(0, NA))
+
+# NDVI variance
+fig_5B <- 
+  ggplot(preds_s2) +
+  geom_ribbon(aes(s2, ymin = lwr_95, ymax = upr_95),
+              fill = 'dodgerblue3', alpha = 0.3) +
+  geom_line(aes(s2, est), colour = 'dodgerblue3',
             linewidth = 1) +
   theme_classic() +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.title.y = element_text(size=10, family = "sans", face = "bold"),
-        axis.title.x = element_text(size=10, family = "sans", face = "bold"),
-        axis.text.y  = element_text(size=10, family = "sans", face = "bold", color = "black"),
-        axis.text.x  = element_text(size=10, family = "sans", face = "bold", color = "black"),
-        plot.title = element_text(hjust = -0.05, size = 12, family = "sans", face = "bold"),
+        axis.title.y = element_text(size=10, family = 'sans', face = 'bold'),
+        axis.title.x = element_text(size=10, family = 'sans', face = 'bold'),
+        axis.text.y  = element_text(size=10, family = 'sans', face = 'bold', color = 'black'),
+        axis.text.x  = element_text(size=10, family = 'sans', face = 'bold', color = 'black'),
+        plot.title = element_text(hjust = -0.05, size = 12, family = 'sans', face = 'bold'),
         strip.background = element_blank(),
         strip.text.x = element_blank(),
-        legend.position = "none",
+        legend.position = 'none',
         legend.title = element_blank(),
-        legend.text = element_text(size=5, family = "sans", face = "bold"),
-        legend.background = element_rect(fill = "transparent"),
+        legend.text = element_text(size=5, family = 'sans', face = 'bold'),
+        legend.background = element_rect(fill = 'transparent'),
         legend.key.size = unit(0.3, 'cm'),
         legend.spacing.y = unit(0.2, 'cm'),
-        panel.background = element_rect(fill = "transparent"),
-        plot.background = element_rect(fill = "transparent", color = NA),
-        plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm")) +
-  ylab("Multiplicative change in species richness") +
-  xlab("Mean NDVI") +
-  scale_x_continuous(expand = c(0,0.005))
+        panel.background = element_rect(fill = 'transparent'),
+        plot.background = element_rect(fill = 'transparent', color = NA),
+        plot.margin = unit(c(0.2,0.1,0.2,0.2), 'cm')) +
+  scale_x_continuous('Variance in NDVI', expand = c(0,0.0004)) +
+  scale_y_continuous('Number of extreme-temperature months',
+                     limits = c(0, NA))
 
-#----------
-#Panel B effect of mean NDVI on richness
-#----------
-
-#Build a dataframe for generating the predictions for the figure 
-var_hat <- data.frame(var_hat = seq(min(extremes$var_hat), 0.04,
-                                    length.out = 1000),
-                      mu_hat = mean(extremes$mu_hat) # 0.2066355
-)
-
-#Predict from the fitted model excluding the terms related to the mean and spatial structure
-var_preds <- predict(m, newdata = var_hat, type = "link", se = TRUE)
-
-#Convert structure for plotting
-var_hat$richness_hat <- exp(var_preds$fit)
-var_hat$richness_min <- exp(var_preds$fit - 1.96*var_preds$se.fit)
-var_hat$richness_max <- exp(var_preds$fit + 1.96*var_preds$se.fit)
-
-# center the function at 1
-var_hat$richness_min <- var_hat$richness_min / mean(var_hat$richness_hat)
-var_hat$richness_max <- var_hat$richness_max / mean(var_hat$richness_hat)
-var_hat$richness_hat <- var_hat$richness_hat / mean(var_hat$richness_hat)
-
-B <- 
-  ggplot()+
-  geom_hline(aes(yintercept = 1), col = "grey80", linetype = "dashed") +
-  geom_ribbon(data = var_hat,
-              aes(var_hat,
-                  ymin = richness_min,
-                  ymax = richness_max),
-              fill = "dodgerblue3",
-              alpha = 0.3) +
-  geom_line(data = var_hat,
-            aes(var_hat,
-                richness_hat),
-            colour = "dodgerblue3",
-            linewidth = 1) +
-  theme_classic() +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.title.y = element_text(size=10, family = "sans", face = "bold"),
-        axis.title.x = element_text(size=10, family = "sans", face = "bold"),
-        axis.text.y  = element_text(size=10, family = "sans", face = "bold", color = "black"),
-        axis.text.x  = element_text(size=10, family = "sans", face = "bold", color = "black"),
-        plot.title = element_text(hjust = -0.05, size = 12, family = "sans", face = "bold"),
-        strip.background = element_blank(),
-        strip.text.x = element_blank(),
-        legend.position = "none",
-        legend.title = element_blank(),
-        legend.text = element_text(size=5, family = "sans", face = "bold"),
-        legend.background = element_rect(fill = "transparent"),
-        legend.key.size = unit(0.3, 'cm'),
-        legend.spacing.y = unit(0.2, 'cm'),
-        panel.background = element_rect(fill = "transparent"),
-        plot.background = element_rect(fill = "transparent", color = NA),
-        plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm")) +
-  ylab("Multiplicative change in species richness") +
-  xlab("Variance in NDVI") +
-  scale_x_continuous(expand = c(0,0.0004)) +
-  annotation_logticks(sides= "b",
-                      short = unit(0.04, "cm"),
-                      mid = unit(0.04, "cm"),
-                      long = unit(0.1, "cm"),
-                      linewidth = 0.2)
-
-#----------
-#Panel C interactive effect of mean and variance in NDVI on richness
-#----------
-var_mu <- as.data.frame(expand_grid(mu_hat = seq(min(extremes$mu_hat),
-                                                 max(extremes$mu_hat), length.out = 400),
-                                    var_hat = seq(min(extremes$var_hat),
-                                                  max(extremes$var_hat), length.out = 400)))
-
-var_mu$too_far <- too_far(var_mu$mu_hat, var_mu$var_hat,
-                          extremes$mu_hat, extremes$var_hat,
-                          dist = 0.05)
-var_mu <- var_mu[! var_mu$too_far, ]
-
-#Predict from the fitted model excluding the spatial structure, and marginal terms
-var_mu$richness_hat <- predict(m, newdata = var_mu, type = "response")
-
-# re-center the function near 1
-hist(var_mu$richness_hat)
-var_mu$richness_hat <- var_mu$richness_hat / 150
-var_mu$z <- log2(var_mu$richness_hat)
-
-fill_mean_lab <- 'Multiplicative change in richness'
-
-
-C <-
-  ggplot(var_mu[!var_mu$too_far,]) +
-  geom_raster(aes(mu_hat, var_hat, fill = z)) +
-  geom_contour(aes(mu_hat, var_hat, z = z), color = 'black') +
+# interaction
+fig_5C <-
+  ggplot(preds_int) +
+  geom_raster(aes(mu, s2, fill = est)) +
+  geom_contour(aes(mu, s2, z = est), color = 'black') +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0)) +
-  scale_fill_gradientn(fill_mean_lab, colours = rev(color('batlow')(100)),
-                       values = ((log2(seq(1/8, 8, by = 1/8)) + 3) / 6)^2,
-                       limits = c(-1, 1) * max(abs(log2(var_mu$richness))),
-                       labels = function(.x) round(2^.x, 2)) +
+  scale_fill_lajolla(
+    name = expression(atop(bold('Number of months'),
+                           bold('with extreme temperatures'))),
+    limits = range(extremes_longlat$n_extr)) +
   theme_classic() +
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
-    axis.title.y = element_text(size=10, family = "sans", face = "bold"),
-    axis.title.x = element_text(size=10, family = "sans", face = "bold"),
-    axis.text.y = element_text(size=8, family = "sans"),
-    axis.text.x  = element_text(size=8, family = "sans"),
-    plot.title = element_text(hjust = -0.05, size = 12, family = "sans", face = "bold"),
+    axis.title.y = element_text(size=10, family = 'sans', face = 'bold'),
+    axis.title.x = element_text(size=10, family = 'sans', face = 'bold'),
+    axis.text.y = element_text(size=8, family = 'sans'),
+    axis.text.x  = element_text(size=8, family = 'sans'),
+    plot.title = element_text(hjust = -0.05, size = 12, family = 'sans', face = 'bold'),
     strip.background = element_blank(),
     strip.text.x = element_blank(),
-    legend.position = "top",
-    legend.title = element_text(size=8, family = "sans", face = "bold"),
-    panel.background = element_rect(fill = "grey40"),
-    plot.background = element_rect(fill = "transparent", color = NA),
-    plot.margin = unit(c(0.2,0.1,0.2,0.2), "cm")) +
-  xlab("Mean NDVI") +
-  ylab("Variance in NDVI") +
+    legend.position = 'top',
+    legend.title = element_text(size=8, family = 'sans', face = 'bold'),
+    panel.background = element_rect(fill = 'grey40'),
+    plot.background = element_rect(fill = 'transparent', color = NA),
+    plot.margin = unit(c(0.2,0.1,0.2,0.2), 'cm')) +
+  xlab('Mean NDVI') +
+  ylab('Variance in NDVI') +
   guides(fill = guide_colorbar(ticks.colour = NA, barwidth = 10,
-                               barheight = 1, direction = "horizontal"))
+                               barheight = 1, direction = 'horizontal'))
+
+slice(preds_int, which.max(est))
 
 # final figure ----
-cowplot::plot_grid(A, B, C, labels = 'AUTO', nrow = 1)
+cowplot::plot_grid(fig_5A, fig_5B, fig_5C, labels = 'AUTO', nrow = 1)
 
-ggsave('Figures/figure-4-richness_regression.png',
+ggsave('Figures/figure-5-extreme-events-regression.png',
        width = 6.86, height = (6.86 / 3), units = 'in',
        dpi = 600, bg = 'white', scale = 2)
