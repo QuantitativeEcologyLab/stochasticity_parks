@@ -227,7 +227,7 @@ C <-
                bins = 10) +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0)) +
-  scale_fill_batlow(name = 'Estimated species richness') +
+  scale_fill_batlow(name = 'Estimated species richness', reverse = TRUE) +
   theme_classic() +
   theme(
     panel.grid.major = element_blank(),
