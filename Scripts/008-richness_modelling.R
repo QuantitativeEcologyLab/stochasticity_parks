@@ -15,7 +15,7 @@ library(gratia)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
-library(scico)
+library(khroma)
 
 
 #Import the rasters describing the mean and variance in NDVI
@@ -84,14 +84,6 @@ anova(fit_mu, fit_var, test = "Chisq")
 # Figure generation
 #-------------------------------------------------------------
 
-# look at the means of each predictor relative to the full distribution
-layout(t(1:2))
-hist(richness_df$mu_hat)
-abline(v = mean(richness_df$mu_hat), col = 'red')
-hist(richness_df$var_hat)
-abline(v = mean(richness_df$var_hat), col = 'red')
-layout(1)
-
 #----------
 #Panel A effect of mean NDVI on richness
 #----------
@@ -100,21 +92,16 @@ layout(1)
 mu_hat <- data.frame(mu_hat = seq(min(richness_df$mu_hat),
                                   max(richness_df$mu_hat),
                                   length.out = 500),
-                     var_hat = mean(richness_df$var_hat) # 0.01129803
-)
+                     var_hat = 0) # excluded, so the value doesn't matter
 
 #Predict from the fitted model excluding the terms related to the variance and spatial structure
-mu_preds <- predict(fit_var, newdata = mu_hat, type = "link", se = TRUE)
+mu_preds <- predict(fit_var, newdata = mu_hat, type = "link", se = TRUE,
+                    terms = 's(mu_hat)')
 
 #Convert structure for plotting
 mu_hat$richness_hat <- exp(mu_preds$fit)
 mu_hat$richness_min <- exp(mu_preds$fit - 1.96*mu_preds$se.fit)
 mu_hat$richness_max <- exp(mu_preds$fit + 1.96*mu_preds$se.fit)
-
-# center the function at 1
-mu_hat$richness_min <- mu_hat$richness_min / mean(mu_hat$richness_hat)
-mu_hat$richness_max <- mu_hat$richness_max / mean(mu_hat$richness_hat)
-mu_hat$richness_hat <- mu_hat$richness_hat / mean(mu_hat$richness_hat)
 
 #Generate panel A
 A <- 
@@ -161,21 +148,16 @@ A <-
 #Build a dataframe for generating the predictions for the figure 
 var_hat <- data.frame(var_hat = seq(min(richness_df$var_hat), 0.04,
                                     length.out = 1000),
-                      mu_hat = mean(richness_df$mu_hat) # 0.2066355
-)
+                      mu_hat = 0) # excluded, so the value doesn't matter
 
 #Predict from the fitted model excluding the terms related to the mean and spatial structure
-var_preds <- predict(fit_var, newdata = var_hat, type = "link", se = TRUE)
+var_preds <- predict(fit_var, newdata = var_hat, type = "link", se = TRUE,
+                     terms = 's(sqrt(var_hat))')
 
 #Convert structure for plotting
 var_hat$richness_hat <- exp(var_preds$fit)
 var_hat$richness_min <- exp(var_preds$fit - 1.96*var_preds$se.fit)
 var_hat$richness_max <- exp(var_preds$fit + 1.96*var_preds$se.fit)
-
-# center the function at 1
-var_hat$richness_min <- var_hat$richness_min / mean(var_hat$richness_hat)
-var_hat$richness_max <- var_hat$richness_max / mean(var_hat$richness_hat)
-var_hat$richness_hat <- var_hat$richness_hat / mean(var_hat$richness_hat)
 
 B <- 
   ggplot()+
@@ -222,36 +204,30 @@ B <-
 #----------
 #Panel C interactive effect of mean and variance in NDVI on richness
 #----------
-var_mu <- as.data.frame(expand_grid(mu_hat = seq(min(richness_df$mu_hat),
-                                                 max(richness_df$mu_hat), length.out = 400),
-                                    var_hat = seq(min(richness_df$var_hat),
-                                                  max(richness_df$var_hat), length.out = 400)))
+var_mu <- expand_grid(mu_hat = seq(min(richness_df$mu_hat),
+                                   max(richness_df$mu_hat),
+                                   length.out = 400),
+                      var_hat = seq(min(richness_df$var_hat),
+                                    max(richness_df$var_hat),
+                                    length.out = 400))
 
 var_mu$too_far <- too_far(var_mu$mu_hat, var_mu$var_hat,
                           richness_df$mu_hat, richness_df$var_hat,
-                          dist = 0.05)
+                          dist = 0.02)
 var_mu <- var_mu[! var_mu$too_far, ]
 
 #Predict from the fitted model excluding the spatial structure, and marginal terms
 var_mu$richness_hat <- predict(fit_var, newdata = var_mu, type = "response")
-
-# re-center the function near 1
-hist(var_mu$richness_hat)
-var_mu$richness_hat <- var_mu$richness_hat / 150
-var_mu$z <- log2(var_mu$richness_hat)
-
-fill_mean_lab <- bquote(atop(bold('Multiplicative change in richness')))
-
+var_mu$richness_hat <- ifelse(var_mu$richness_hat > 300, 300, var_mu$richness_hat)
 
 C <-
   ggplot(var_mu[!var_mu$too_far,]) +
-  geom_raster(aes(mu_hat, var_hat, fill = z)) +
-  geom_contour(aes(mu_hat, var_hat, z = z), color = 'black') +
+  geom_raster(aes(mu_hat, var_hat, fill = richness_hat)) +
+  geom_contour(aes(mu_hat, var_hat, z = richness_hat), color = 'black',
+               bins = 10) +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0)) +
-  scale_fill_scico(fill_mean_lab, palette = "vik", direction = -1,
-                   limits = c(-1, 1) * max(abs(log2(var_mu$richness))),
-                   labels = function(.x) round(2^.x, 2)) +
+  scale_fill_batlow(name = 'Estimated species richness') +
   theme_classic() +
   theme(
     panel.grid.major = element_blank(),
