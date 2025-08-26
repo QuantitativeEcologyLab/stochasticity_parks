@@ -7,7 +7,7 @@ theme_set(theme_bw() + theme(legend.position = 'top'))
 
 # raster files are kept in a different project repo folder
 # not copied over to save space and avoid corruption during copy
-r_0 <- rast('../ndvi-stochasticity/data/avhrr-viirs-ndvi/raster-files/AVHRR-Land_v005_AVH13C1_NOAA-07_19810624_c20170610041337.nc')
+r_0 <- rast('Data/ndvi-data/AVHRR-Land_v005/AVHRR-Land_v005_AVH13C1_NOAA-07_19810624_c20170610041337.nc')
 CRS <- crs(r_0)
 
 # shapefile of canada
