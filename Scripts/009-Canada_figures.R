@@ -620,3 +620,98 @@ p_s3 <-
 
 ggsave("Figures/figure-s3-mean-variance-correlation.png", p_s3,
        width = 6.86, height = 6.86, units = "in", dpi = 600, bg = "white")
+
+
+# Klinse-za PA figure ----
+kz <- filter(z, grepl('KLINSE-ZA', toupper(NAME_E))) %>%
+  st_geometry() %>%
+  st_transform(canada_albers)
+plot(kz)
+
+kz_areas <- filter(areas,
+                   x >= st_bbox(st_buffer(kz, 2.5e4))['xmin'],
+                   x <= st_bbox(st_buffer(kz, 2.5e4))['xmax'],
+                   y >= st_bbox(st_buffer(kz, 2.5e4))['ymin'],
+                   y <= st_bbox(st_buffer(kz, 2.5e4))['ymax'])
+
+theme_kz <-
+  ggplot() +
+  theme_void() +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme(legend.position = 'top',
+        legend.justification = 'left',
+        legend.title = element_text(face = "bold"),
+        legend.key.size = unit(0.4, 'cm'),
+        legend.text = element_text(size=7, family = "sans", face = "bold"),
+        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm"),
+        panel.border = element_rect(color = 'black'),
+        panel.background = element_rect(fill = 'grey50')) +
+  guides(fill = guide_colorbar(title.position = "top", ticks.colour = NA,
+                               barwidth = 6, barheight = 0.5,
+                               direction = "horizontal"))
+mean.quant <-
+  theme_kz +
+  geom_sf(data = kz, color = "black", fill = NA, lwd = 0.5) + 
+  geom_raster(aes(x, y, fill = top_mean), kz_areas) +
+  geom_sf(data = kz, color = "black", fill = NA, lwd = 0.5) + 
+  scale_fill_gradientn(name = 'Mean NDVI', colours = NDVI_cols,
+                       limits = range(est_albers$mu_hat))
+
+var.quant <-
+  theme_kz +
+  geom_sf(data = kz, color = "black", fill = NA, lwd = 0.5) + 
+  geom_raster(aes(x, y, fill = bottom_var), kz_areas) +
+  geom_sf(data = kz, fill = NA, color = "black", lwd = 0.5) + 
+  scale_fill_devon(name = 'Variance in NDVI', reverse = TRUE,
+                   limits = c(0, 0.04))
+
+cv.quant <-
+  theme_kz +
+  geom_sf(data = kz, color = "black", fill = NA, lwd = 0.5) + 
+  geom_raster(aes(x, y, fill = bottom_cv), kz_areas) +
+  geom_sf(data = kz, fill = NA, color = "black", lwd = 0.5) + 
+  scale_fill_acton(name = 'CV in NDVI', reverse = TRUE,
+                   limits = c(0, NA))
+
+p_spp_richness <-
+  theme_kz +
+  geom_sf(data = kz, color = "black", fill = NA, lwd = 0.5) + 
+  geom_raster(aes(x, y, fill = top_rich), kz_areas) +
+  geom_sf(data = kz, fill = NA, color = "black", lwd = 0.5) +
+  scale_fill_batlow(name = 'Species richness', reverse = TRUE,
+                    limits = c(0, max(areas$top_rich, na.rm = TRUE)))
+
+p_extr <-
+  theme_kz +
+  geom_sf(data = kz, color = "black", fill = NA, lwd = 0.5) + 
+  geom_raster(aes(x, y, fill = bottom_extr), kz_areas) +
+  geom_sf(data = kz, fill = NA, color = "black", lwd = 0.5) +
+  scale_fill_lajolla(name = 'Months with extreme temperatures',
+                     limits = c(24, 164))
+
+p_pas <- ggplot() +
+  theme_void() +
+  theme(legend.position = 'inside',
+        legend.position.inside = c(0.1, 0.95),
+        legend.justification = 'left',
+        legend.title = element_text(face = "bold"),
+        legend.key.size = unit(0.4, 'cm'),
+        legend.text = element_text(size=7, family = "sans", face = "bold"),
+        plot.margin = unit(c(0.2,-0.5,0.1,0.2), "cm")) +
+  geom_sf(data = canada, fill = 'grey', color = 'transparent') + 
+  geom_raster(aes(x, y, fill = pa),
+              as.data.frame(r_pas, xy = TRUE) %>%
+                mutate(pa = if_else(layer == 1, 'Yes', 'No') %>%
+                         factor(levels = c('Yes', 'No')))) +
+  geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) +
+  geom_sf(data = kz, fill = '#FCAA67', color = "#FCAA67", lwd = 0.15) +
+  scale_fill_manual('Protected areas', values = c('#255016', 'grey50'))
+
+fig_kz <- plot_grid(p_pas, mean.quant, var.quant,
+                   cv.quant, p_spp_richness, p_extr,
+                   nrow = 2, labels = "AUTO")
+fig_kz
+
+ggsave('Figures/figure-s5-klinse-za-pa.png', fig_kz, units = "in", bg = "white",
+       width = 12.75, height = 7, dpi = 600)
