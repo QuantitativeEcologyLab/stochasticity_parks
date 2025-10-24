@@ -66,6 +66,10 @@ table(grepl('Downloaded', output))
 #' There's a few days that have no raster associated with them, but it's
 #' generally rare. See `gaps` below.
 
+# remove raster file with all coordinates as (0, 0)
+plot(rast('~/bigdrive/shared/avhrr-viirs-ndvi-raster-files/VIIRS-Land-v001/VIIRS-Land_v001_JP113C1_NOAA-20_20250515_c20250517143017.nc'))
+file.remove('~/bigdrive/shared/avhrr-viirs-ndvi-raster-files/VIIRS-Land-v001/VIIRS-Land_v001_JP113C1_NOAA-20_20250515_c20250517143017.nc')
+
 # check files
 fn_dates <- fn_tib %>%
   pull(fn) %>%
