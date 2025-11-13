@@ -321,7 +321,7 @@ var_mu_5km <-
 map_25km <-
   ggplot() +
   geom_sf(data = canada, fill = 'grey', color = "transparent") + 
-  geom_raster(aes(x, y, fill = richness), richness_df_23km) +
+  geom_raster(aes(x, y, fill = richness), richness_df_25km) +
   geom_sf(data = canada, fill = NA, color = "black", lwd = 0.2) + 
   scale_fill_scico(name = "Species richness - ~25km x 25km", palette = 'batlow') +
   theme_void() +
